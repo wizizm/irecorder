@@ -5,41 +5,44 @@ struct SettingsView: View {
     @State private var retentionText = ""
     @State private var truncateKBText = ""
 
-    private let labelWidth: CGFloat = 130
+    private let labelWidth: CGFloat = 120
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                groupTitle("日志")
+        VStack(alignment: .leading, spacing: 16) {
+            groupTitle("日志")
 
-                HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
                     Text("日志目录")
-                        .frame(width: labelWidth, alignment: .leading)
-                    Text(appState.logDirectoryPath)
-                        .font(.system(.body, design: .monospaced))
-                        .lineLimit(3)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Spacer(minLength: 8)
                     Button("选择…") { appState.chooseLogDirectory() }
                 }
+                Text(appState.logDirectoryPath)
+                    .font(.system(size: 11, design: .monospaced))
+                    .lineLimit(2)
+                    .textSelection(.enabled)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
-                numberRow(
-                    title: "保留天数",
-                    text: $retentionText,
-                    unit: "天",
-                    hint: "填 0 表示永不自动删除",
-                    onCommit: commitRetention
-                )
+            numberRow(
+                title: "保留天数",
+                text: $retentionText,
+                unit: "天",
+                hint: "填 0 表示永不自动删除",
+                onCommit: commitRetention
+            )
 
-                numberRow(
-                    title: "复制/粘贴截断",
-                    text: $truncateKBText,
-                    unit: "KB",
-                    hint: "填 0 表示不截断",
-                    onCommit: commitTruncate
-                )
+            numberRow(
+                title: "复制/粘贴截断",
+                text: $truncateKBText,
+                unit: "KB",
+                hint: "填 0 表示不截断",
+                onCommit: commitTruncate
+            )
 
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
                     Text("打字换行等待")
                         .frame(width: labelWidth, alignment: .leading)
                     Stepper(value: Binding(
@@ -47,33 +50,36 @@ struct SettingsView: View {
                         set: { appState.updateTypeLineIdleSeconds($0) }
                     ), in: 1...60) {
                         Text("\(appState.typeLineIdleSeconds) 秒")
-                            .frame(minWidth: 48, alignment: .leading)
+                            .frame(minWidth: 40, alignment: .leading)
                     }
                 }
-                hintText("无键盘输入达上述秒数后写一行；按 Enter 立即换行")
-
-                Divider()
-
-                groupTitle("权限与启动")
-
-                HStack(spacing: 12) {
-                    Text(appState.accessibilityTrusted ? "辅助功能：已授权" : "辅助功能：未授权")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Button("打开设置") { appState.promptAccessibility() }
-                }
-
-                Toggle("登录时启动", isOn: Binding(
-                    get: { appState.loginItemEnabled },
-                    set: { appState.setLaunchAtLogin($0) }
-                ))
+                Text("无键盘输入达上述秒数后写一行；按 Enter 立即换行")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(24)
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Divider().padding(.vertical, 4)
+
+            groupTitle("权限与启动")
+
+            HStack {
+                Text(appState.accessibilityTrusted ? "辅助功能：已授权" : "辅助功能：未授权")
+                Spacer(minLength: 8)
+                Button("打开设置") { appState.promptAccessibility() }
+            }
+
+            Toggle("登录时启动", isOn: Binding(
+                get: { appState.loginItemEnabled },
+                set: { appState.setLaunchAtLogin($0) }
+            ))
         }
-        .frame(minWidth: 520, idealWidth: 560, minHeight: 420)
+        .padding(20)
+        .frame(width: 400, height: 480)
         .onAppear {
             retentionText = String(appState.retentionDays)
             truncateKBText = String(appState.clipboardTruncateMaxKB)
+            appState.refreshAccessibility()
         }
         .onDisappear {
             commitRetention()
@@ -84,14 +90,6 @@ struct SettingsView: View {
     private func groupTitle(_ title: String) -> some View {
         Text(title)
             .font(.headline)
-            .foregroundStyle(.primary)
-    }
-
-    private func hintText(_ text: String) -> some View {
-        Text(text)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.leading, labelWidth + 12)
     }
 
     private func numberRow(
@@ -102,19 +100,20 @@ struct SettingsView: View {
         onCommit: @escaping () -> Void
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 Text(title)
                     .frame(width: labelWidth, alignment: .leading)
                 TextField("", text: text)
                     .textFieldStyle(.roundedBorder)
-                    .frame(width: 88)
+                    .frame(width: 72)
                     .multilineTextAlignment(.trailing)
                     .onSubmit(onCommit)
                 Text(unit)
                     .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
             }
-            hintText(hint)
+            Text(hint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
