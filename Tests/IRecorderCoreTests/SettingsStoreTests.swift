@@ -11,6 +11,7 @@ import Testing
     #expect(store.launchAtLogin == true)
     #expect(store.isRecording == true)
     #expect(store.clipboardTruncateMaxBytes == 100_000)
+    #expect(store.typeLineIdleSeconds == 3)
     #expect(store.logDirectoryURL.path.hasSuffix("Documents/iRecorder"))
 }
 
@@ -23,6 +24,7 @@ import Testing
     store.isRecording = false
     store.launchAtLogin = false
     store.clipboardTruncateMaxBytes = 8_000
+    store.typeLineIdleSeconds = 5
     let custom = URL(fileURLWithPath: "/tmp/irecorder-test-logs")
     store.logDirectoryURL = custom
 
@@ -31,5 +33,6 @@ import Testing
     #expect(again.isRecording == false)
     #expect(again.launchAtLogin == false)
     #expect(again.clipboardTruncateMaxBytes == 8_000)
+    #expect(again.typeLineIdleSeconds == 5)
     #expect(again.logDirectoryURL == custom)
 }

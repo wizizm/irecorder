@@ -9,6 +9,7 @@ public final class SettingsStore: @unchecked Sendable {
         static let launchAtLogin = "launchAtLogin"
         static let isRecording = "isRecording"
         static let clipboardTruncateMaxBytes = "clipboardTruncateMaxBytes"
+        static let typeLineIdleSeconds = "typeLineIdleSeconds"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -60,6 +61,15 @@ public final class SettingsStore: @unchecked Sendable {
             return max(0, defaults.integer(forKey: Key.clipboardTruncateMaxBytes))
         }
         set { defaults.set(max(0, newValue), forKey: Key.clipboardTruncateMaxBytes) }
+    }
+
+    /// Seconds of typing idle before a `type` line is flushed. Default 3. Minimum 1.
+    public var typeLineIdleSeconds: Int {
+        get {
+            if defaults.object(forKey: Key.typeLineIdleSeconds) == nil { return 3 }
+            return max(1, defaults.integer(forKey: Key.typeLineIdleSeconds))
+        }
+        set { defaults.set(max(1, newValue), forKey: Key.typeLineIdleSeconds) }
     }
 
     public static var defaultLogDirectory: URL {

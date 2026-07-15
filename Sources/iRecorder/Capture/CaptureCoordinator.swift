@@ -7,35 +7,53 @@ final class CaptureCoordinator {
     private let ax = AXWatcher()
     private let clipboard = ClipboardWatcher()
     private let paste = PasteDetector()
+    private let returnKey = ReturnKeyDetector()
     private let typeSuppressor = InsertionSuppressor()
+    private let typeBuffer: TypeLineBuffer
     private var writer: LogWriter
+    private var idleTimer: Timer?
     private let log = Logger(subsystem: "com.linwenjie.iRecorder", category: "capture")
 
     init(settings: SettingsStore) {
         self.settings = settings
         self.writer = LogWriter(directory: settings.logDirectoryURL)
+        self.typeBuffer = TypeLineBuffer(idleInterval: TimeInterval(settings.typeLineIdleSeconds))
     }
 
     func start() {
         reloadWriter()
+        syncIdleInterval()
         pruneIfNeeded()
         wire(ax)
         wire(clipboard)
         wire(paste)
+        returnKey.onReturn = { [weak self] in
+            self?.flushTypeEnter()
+        }
         ax.start()
         clipboard.start()
         paste.start()
+        returnKey.start()
+        startIdleTimer()
         _ = AXWatcher.isTrusted(prompt: true)
     }
 
     func stop() {
+        idleTimer?.invalidate()
+        idleTimer = nil
+        flushTypePending()
         ax.stop()
         clipboard.stop()
         paste.stop()
+        returnKey.stop()
     }
 
     func reloadWriter() {
         writer = LogWriter(directory: settings.logDirectoryURL)
+    }
+
+    func syncIdleInterval() {
+        typeBuffer.idleInterval = TimeInterval(settings.typeLineIdleSeconds)
     }
 
     func pruneIfNeeded() {
@@ -55,6 +73,15 @@ final class CaptureCoordinator {
         return settings.logDirectoryURL.appendingPathComponent(name)
     }
 
+    private func startIdleTimer() {
+        idleTimer?.invalidate()
+        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+            self?.flushTypeIfIdle()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        idleTimer = timer
+    }
+
     private func wire(_ watcher: AXWatcher) {
         watcher.onEvent = { [weak self] event in self?.handle(event) }
     }
@@ -71,12 +98,58 @@ final class CaptureCoordinator {
         guard settings.isRecording else { return }
         switch event.kind {
         case .paste:
+            flushTypePending()
             typeSuppressor.notePaste(event.payload)
+            write(event)
+        case .copy:
+            flushTypePending()
+            write(event)
         case .type:
             if typeSuppressor.shouldSuppressType(event.payload) { return }
-        case .copy:
-            break
+            syncIdleInterval()
+            let flushes = typeBuffer.ingest(
+                appName: event.appName,
+                insertion: event.payload,
+                at: event.date
+            )
+            for flush in flushes {
+                writeTypeFlush(flush)
+            }
         }
+    }
+
+    private func flushTypeEnter() {
+        guard settings.isRecording else { return }
+        if let flush = typeBuffer.noteEnter() {
+            writeTypeFlush(flush)
+        }
+    }
+
+    private func flushTypeIfIdle() {
+        guard settings.isRecording else { return }
+        syncIdleInterval()
+        if let flush = typeBuffer.tick() {
+            writeTypeFlush(flush)
+        }
+    }
+
+    private func flushTypePending() {
+        if let flush = typeBuffer.flushPending() {
+            writeTypeFlush(flush)
+        }
+    }
+
+    private func writeTypeFlush(_ flush: TypeLineBuffer.Flush) {
+        let event = CaptureEvent(
+            kind: .type,
+            appName: flush.appName,
+            payload: flush.payload,
+            date: flush.date
+        )
+        write(event)
+    }
+
+    private func write(_ event: CaptureEvent) {
         do {
             let maxBytes = PayloadTruncatePolicy.maxBytes(
                 for: event.kind,

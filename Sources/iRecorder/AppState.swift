@@ -17,6 +17,7 @@ final class AppState: ObservableObject {
     @Published var logDirectoryPath: String
     /// Display unit: kilobytes (1000 bytes). 0 = unlimited.
     @Published var clipboardTruncateMaxKB: Int
+    @Published var typeLineIdleSeconds: Int
 
     init(settings: SettingsStore = SettingsStore()) {
         self.settings = settings
@@ -27,6 +28,7 @@ final class AppState: ObservableObject {
         self.retentionDays = settings.retentionDays
         self.logDirectoryPath = settings.logDirectoryURL.path
         self.clipboardTruncateMaxKB = settings.clipboardTruncateMaxBytes / 1000
+        self.typeLineIdleSeconds = settings.typeLineIdleSeconds
     }
 
     func start() {
@@ -94,6 +96,12 @@ final class AppState: ObservableObject {
     func updateClipboardTruncateMaxKB(_ kb: Int) {
         clipboardTruncateMaxKB = max(0, kb)
         settings.clipboardTruncateMaxBytes = clipboardTruncateMaxKB * 1000
+    }
+
+    func updateTypeLineIdleSeconds(_ seconds: Int) {
+        typeLineIdleSeconds = max(1, seconds)
+        settings.typeLineIdleSeconds = typeLineIdleSeconds
+        coordinator.syncIdleInterval()
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {

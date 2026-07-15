@@ -35,6 +35,8 @@ swift run iRecorder
 
 一天一个文件：`YYYY-MM-DD.log`
 
+打字会**缓冲成行**：停输入 N 秒（默认 3，设置可改）后写一行；按 **Enter** 立即写一行。复制/粘贴仍是立刻各记一行。
+
 ```text
 2026-07-15T16:12:03+08:00	type	Safari	你好世界
 2026-07-15T16:12:10+08:00	copy	Finder	clipboard text
