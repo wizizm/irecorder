@@ -37,6 +37,14 @@ final class AppState: ObservableObject {
         refreshAccessibility()
     }
 
+    /// First launch only: open Accessibility pane if not yet trusted.
+    func startPromptingAccessibilityIfNeeded() {
+        start()
+        if !accessibilityTrusted {
+            promptAccessibility()
+        }
+    }
+
     func toggleRecording() {
         isRecording.toggle()
         settings.isRecording = isRecording

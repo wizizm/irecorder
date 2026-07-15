@@ -4,9 +4,12 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let appState = AppState()
+    private var didLaunch = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        appState.start()
+        guard !didLaunch else { return }
+        didLaunch = true
+        appState.startPromptingAccessibilityIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -21,6 +24,7 @@ struct IRecorderApp: App {
     var body: some Scene {
         MenuBarExtra {
             MenuBarContent(appState: appDelegate.appState)
+                .onAppear { appDelegate.appState.start() }
         } label: {
             MenuBarLabel(appState: appDelegate.appState)
         }

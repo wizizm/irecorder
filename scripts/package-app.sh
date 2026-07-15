@@ -13,5 +13,23 @@ cp "$ROOT/Sources/iRecorder/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 cp "$ROOT/Resources/MenuBarIcon.png" "$APP/Contents/Resources/MenuBarIcon.png"
 chmod +x "$APP/Contents/MacOS/iRecorder"
+
+# Bind Info.plist into the ad-hoc signature so TCC/Accessibility can track the app.
+codesign --force --deep --sign - "$APP" >/dev/null
+
 echo "Built $APP"
-echo "Drag to /Applications, then open once and grant Accessibility."
+
+INSTALL_APP="/Applications/iRecorder.app"
+if [[ "${IRECORDER_SKIP_INSTALL:-}" == "1" ]]; then
+  echo "Skipped install (IRECORDER_SKIP_INSTALL=1)."
+else
+  # Replace running /Applications copy so you don't keep testing a stale binary.
+  pkill -x iRecorder 2>/dev/null || true
+  sleep 0.3
+  rm -rf "$INSTALL_APP"
+  cp -R "$APP" "$INSTALL_APP"
+  codesign --force --deep --sign - "$INSTALL_APP" >/dev/null
+  echo "Installed $INSTALL_APP"
+  echo "Open it, then confirm Accessibility is checked for iRecorder (rebuild invalidates prior grant)."
+  open "$INSTALL_APP"
+fi

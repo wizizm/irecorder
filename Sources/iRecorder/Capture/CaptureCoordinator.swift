@@ -13,6 +13,7 @@ final class CaptureCoordinator {
     private let copyPasteMerger = CopyPasteMerger(mergeWindow: 3)
     private var writer: LogWriter
     private var idleTimer: Timer?
+    private var didStart = false
     private let log = Logger(subsystem: "com.linwenjie.iRecorder", category: "capture")
 
     init(settings: SettingsStore) {
@@ -22,6 +23,14 @@ final class CaptureCoordinator {
     }
 
     func start() {
+        if didStart {
+            // Re-bind writer/dir and re-check AX after preference changes / re-grant.
+            reloadWriter()
+            syncIdleInterval()
+            _ = AXWatcher.isTrusted(prompt: false)
+            return
+        }
+        didStart = true
         reloadWriter()
         syncIdleInterval()
         pruneIfNeeded()
@@ -37,6 +46,7 @@ final class CaptureCoordinator {
         returnKey.start()
         startIdleTimer()
         _ = AXWatcher.isTrusted(prompt: true)
+        log.info("capture started dir=\(self.settings.logDirectoryURL.path, privacy: .public)")
     }
 
     func stop() {
@@ -118,6 +128,7 @@ final class CaptureCoordinator {
                 payload: event.payload,
                 at: event.date
             ))
+            scheduleCopyPasteExpiry()
         case .copyPaste:
             write(event)
         case .type:
@@ -163,6 +174,14 @@ final class CaptureCoordinator {
         writeAll(copyPasteMerger.tick())
     }
 
+    /// Backup for Timer: MenuBarExtra apps sometimes starve timer callbacks briefly.
+    private func scheduleCopyPasteExpiry() {
+        let delay = copyPasteMerger.mergeWindow + 0.05
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.flushCopyPasteIfExpired()
+        }
+    }
+
     private func flushTypePending() {
         if let flush = typeBuffer.flushPending() {
             writeAll(copyPasteMerger.noteInterruptingActivity(at: flush.date))
@@ -199,6 +218,7 @@ final class CaptureCoordinator {
                 configured: settings.clipboardTruncateMaxBytes
             )
             try writer.append(event, maxPayloadBytes: maxBytes)
+            log.info("wrote \(event.kind.rawValue, privacy: .public) app=\(event.appName, privacy: .public) bytes=\(event.payload.utf8.count)")
         } catch {
             log.error("append failed: \(error.localizedDescription, privacy: .public)")
         }
