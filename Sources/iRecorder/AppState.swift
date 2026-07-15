@@ -37,12 +37,9 @@ final class AppState: ObservableObject {
         refreshAccessibility()
     }
 
-    /// First launch only: open Accessibility pane if not yet trusted.
+    /// Start capture without popping permission UI (re-check status quietly).
     func startPromptingAccessibilityIfNeeded() {
         start()
-        if !accessibilityTrusted {
-            promptAccessibility()
-        }
     }
 
     func toggleRecording() {
@@ -54,6 +51,7 @@ final class AppState: ObservableObject {
         accessibilityTrusted = AXWatcher.isTrusted(prompt: false)
     }
 
+    /// User-initiated only (Settings button / menu item).
     func promptAccessibility() {
         _ = AXWatcher.isTrusted(prompt: true)
         refreshAccessibility()

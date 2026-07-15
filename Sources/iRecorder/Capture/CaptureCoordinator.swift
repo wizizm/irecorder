@@ -56,7 +56,9 @@ final class CaptureCoordinator {
         returnKey.start()
         startIdlePoller()
         writeSessionStarted()
-        _ = AXWatcher.isTrusted(prompt: true)
+        // Never prompt here — opening the AX dialog on every launch is annoying.
+        // User can grant via Settings / menu "授予辅助功能权限…".
+        _ = AXWatcher.isTrusted(prompt: false)
         log.error("capture started dir=\(self.settings.logDirectoryURL.path, privacy: .public)")
     }
 
