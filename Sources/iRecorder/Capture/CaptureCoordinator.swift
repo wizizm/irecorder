@@ -96,6 +96,9 @@ final class CaptureCoordinator {
 
     private func handle(_ event: CaptureEvent) {
         guard settings.isRecording else { return }
+        if SelfCaptureFilter.shouldIgnore(payload: event.payload, appName: event.appName) {
+            return
+        }
         switch event.kind {
         case .paste:
             flushTypePending()
@@ -146,6 +149,9 @@ final class CaptureCoordinator {
     }
 
     private func writeTypeFlush(_ flush: TypeLineBuffer.Flush) {
+        if SelfCaptureFilter.shouldIgnore(payload: flush.payload, appName: flush.appName) {
+            return
+        }
         let event = CaptureEvent(
             kind: .type,
             appName: flush.appName,
