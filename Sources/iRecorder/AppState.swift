@@ -63,7 +63,7 @@ final class AppState: ObservableObject {
     /// Bring an already-created Settings window above other apps (safe if not open yet).
     func bringSettingsWindowForward() {
         NSApp.activate(ignoringOtherApps: true)
-        let raise = { [weak self] in
+        let raise: () -> Void = { [weak self] in
             self?.raiseSettingsWindows()
         }
         DispatchQueue.main.async(execute: raise)
