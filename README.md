@@ -35,17 +35,19 @@ swift run iRecorder
 
 一天一个文件：`YYYY-MM-DD.log`
 
-打字会**缓冲成行**：停输入 N 秒（默认 3，设置可改）后写一行；按 **Enter** 立即写一行。复制/粘贴仍是立刻各记一行。  
+打字会**缓冲成行**：停输入 N 秒（默认 3，设置可改）后写一行；按 **Enter** 立即写一行。  
+复制后立刻粘贴同一段且中间没有其他打字记录 → 合并为一行 `copy_paste`（约 3 秒内）；否则仍是分开的 `copy` / `paste`。  
 中文输入法下会**忽略拼音组字过程**（`a-z` / `'` 等），只保留上屏汉字；英文输入源下的字母仍会记录。  
 不会再把「自己的 log 内容」二次记入（避免在控制台打开 log 时 `\t`/`\` 指数膨胀）。
 
 ```text
 2026-07-15T16:12:03+08:00	type	Safari	你好世界
-2026-07-15T16:12:10+08:00	copy	Finder	clipboard text
-2026-07-15T16:12:12+08:00	paste	Notes	clipboard text
+2026-07-15T16:12:10+08:00	copy_paste	Finder→Notes	clipboard text
+2026-07-15T16:12:20+08:00	copy	Safari	only copied
+2026-07-15T16:12:25+08:00	paste	Notes	pasted later
 ```
 
-字段：`时间`、`type|copy|paste`、`前台 App`、`原文`（换行/制表符转义为 `\n` / `\t`）。  
+字段：`时间`、`type|copy|paste|copy_paste`、`前台 App`、`原文`（换行/制表符转义为 `\n` / `\t`）。  
 超过配置长度的复制/粘贴内容会截断并附加 ` [truncated]`（设置里可改 KB，默认 100；`0` = 不截断）。打字记录不截断。  
 密码框 / Secure 字段的**打字**不会被记录（复制/粘贴到剪贴板的内容仍会记）。  
 粘贴后同一次上屏的 AX 回声不会再记一条 `type`。

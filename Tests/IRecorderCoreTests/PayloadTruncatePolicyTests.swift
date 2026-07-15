@@ -4,6 +4,7 @@ import Testing
 @Test func clipboardKindsUseConfiguredLimit() {
     #expect(PayloadTruncatePolicy.maxBytes(for: .copy, configured: 50_000) == 50_000)
     #expect(PayloadTruncatePolicy.maxBytes(for: .paste, configured: 50_000) == 50_000)
+    #expect(PayloadTruncatePolicy.maxBytes(for: .copyPaste, configured: 50_000) == 50_000)
 }
 
 @Test func typeKindDoesNotTruncateByClipboardSetting() {

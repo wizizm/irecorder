@@ -10,6 +10,7 @@ final class CaptureCoordinator {
     private let returnKey = ReturnKeyDetector()
     private let typeSuppressor = InsertionSuppressor()
     private let typeBuffer: TypeLineBuffer
+    private let copyPasteMerger = CopyPasteMerger(mergeWindow: 3)
     private var writer: LogWriter
     private var idleTimer: Timer?
     private let log = Logger(subsystem: "com.linwenjie.iRecorder", category: "capture")
@@ -42,6 +43,7 @@ final class CaptureCoordinator {
         idleTimer?.invalidate()
         idleTimer = nil
         flushTypePending()
+        writeAll(copyPasteMerger.flushPending())
         ax.stop()
         clipboard.stop()
         paste.stop()
@@ -77,6 +79,7 @@ final class CaptureCoordinator {
         idleTimer?.invalidate()
         let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
             self?.flushTypeIfIdle()
+            self?.flushCopyPasteIfExpired()
         }
         RunLoop.main.add(timer, forMode: .common)
         idleTimer = timer
@@ -103,9 +106,19 @@ final class CaptureCoordinator {
         case .paste:
             flushTypePending()
             typeSuppressor.notePaste(event.payload)
-            write(event)
+            writeAll(copyPasteMerger.notePaste(
+                appName: event.appName,
+                payload: event.payload,
+                at: event.date
+            ))
         case .copy:
             flushTypePending()
+            writeAll(copyPasteMerger.noteCopy(
+                appName: event.appName,
+                payload: event.payload,
+                at: event.date
+            ))
+        case .copyPaste:
             write(event)
         case .type:
             if typeSuppressor.shouldSuppressType(event.payload) { return }
@@ -115,6 +128,7 @@ final class CaptureCoordinator {
             ) {
                 return
             }
+            writeAll(copyPasteMerger.noteInterruptingActivity(at: event.date))
             syncIdleInterval()
             let flushes = typeBuffer.ingest(
                 appName: event.appName,
@@ -129,6 +143,7 @@ final class CaptureCoordinator {
 
     private func flushTypeEnter() {
         guard settings.isRecording else { return }
+        writeAll(copyPasteMerger.noteInterruptingActivity())
         if let flush = typeBuffer.noteEnter() {
             writeTypeFlush(flush)
         }
@@ -138,12 +153,19 @@ final class CaptureCoordinator {
         guard settings.isRecording else { return }
         syncIdleInterval()
         if let flush = typeBuffer.tick() {
+            writeAll(copyPasteMerger.noteInterruptingActivity(at: flush.date))
             writeTypeFlush(flush)
         }
     }
 
+    private func flushCopyPasteIfExpired() {
+        guard settings.isRecording else { return }
+        writeAll(copyPasteMerger.tick())
+    }
+
     private func flushTypePending() {
         if let flush = typeBuffer.flushPending() {
+            writeAll(copyPasteMerger.noteInterruptingActivity(at: flush.date))
             writeTypeFlush(flush)
         }
     }
@@ -161,7 +183,16 @@ final class CaptureCoordinator {
         write(event)
     }
 
+    private func writeAll(_ events: [CaptureEvent]) {
+        for event in events {
+            write(event)
+        }
+    }
+
     private func write(_ event: CaptureEvent) {
+        if SelfCaptureFilter.shouldIgnore(payload: event.payload, appName: event.appName) {
+            return
+        }
         do {
             let maxBytes = PayloadTruncatePolicy.maxBytes(
                 for: event.kind,

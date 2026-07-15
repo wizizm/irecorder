@@ -6,4 +6,5 @@ import Testing
     #expect(CaptureKind.type.rawValue == "type")
     #expect(CaptureKind.copy.rawValue == "copy")
     #expect(CaptureKind.paste.rawValue == "paste")
+    #expect(CaptureKind.copyPaste.rawValue == "copy_paste")
 }

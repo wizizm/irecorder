@@ -4,6 +4,7 @@ public enum CaptureKind: String, Sendable {
     case type
     case copy
     case paste
+    case copyPaste = "copy_paste"
 }
 
 public struct CaptureEvent: Sendable, Equatable {

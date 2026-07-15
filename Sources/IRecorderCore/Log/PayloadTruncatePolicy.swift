@@ -7,7 +7,7 @@ public enum PayloadTruncatePolicy {
         switch kind {
         case .type:
             return nil
-        case .copy, .paste:
+        case .copy, .paste, .copyPaste:
             return configured > 0 ? configured : nil
         }
     }

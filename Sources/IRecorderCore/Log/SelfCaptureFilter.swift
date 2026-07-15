@@ -13,6 +13,7 @@ public enum SelfCaptureFilter {
         if payload.contains("\\ttype\\t")
             || payload.contains("\\tcopy\\t")
             || payload.contains("\\tpaste\\t")
+            || payload.contains("\\tcopy_paste\\t")
             || payload.contains("\\\\ttype")
             || payload.contains("\\\\tcopy")
             || payload.contains("\\\\tpaste") {
@@ -29,5 +30,6 @@ public enum SelfCaptureFilter {
         return payload.contains("\ttype\t")
             || payload.contains("\tcopy\t")
             || payload.contains("\tpaste\t")
+            || payload.contains("\tcopy_paste\t")
     }
 }
