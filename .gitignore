@@ -4,3 +4,4 @@ dist/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcuserdata/
 .DS_Store
+.cursor/
