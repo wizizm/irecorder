@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MenuBarContent: View {
     @ObservedObject var appState: AppState
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Button(appState.isRecording ? "暂停记录" : "继续记录") {
@@ -16,7 +17,10 @@ struct MenuBarContent: View {
             Button("授予辅助功能权限…") { appState.promptAccessibility() }
         }
         Button("设置…") {
-            appState.openSettingsWindow()
+            // openSettings: first-time create; bringSettingsForward: already open but obscured.
+            NSApp.activate(ignoringOtherApps: true)
+            openSettings()
+            appState.bringSettingsWindowForward()
         }
         Divider()
         Button("退出") {

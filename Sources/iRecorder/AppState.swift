@@ -60,21 +60,18 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// Open Settings (or bring an already-open Settings window above other apps).
-    func openSettingsWindow() {
+    /// Bring an already-created Settings window above other apps (safe if not open yet).
+    func bringSettingsWindowForward() {
         NSApp.activate(ignoringOtherApps: true)
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        bringSettingsWindowForward()
-        // Window may be created asynchronously on first open.
-        DispatchQueue.main.async { [weak self] in
-            self?.bringSettingsWindowForward()
+        let raise = { [weak self] in
+            self?.raiseSettingsWindows()
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            self?.bringSettingsWindowForward()
-        }
+        DispatchQueue.main.async(execute: raise)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: raise)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: raise)
     }
 
-    private func bringSettingsWindowForward() {
+    private func raiseSettingsWindows() {
         NSApp.activate(ignoringOtherApps: true)
         let settingsWindows = NSApp.windows.filter { window in
             let id = window.identifier?.rawValue ?? ""
@@ -85,10 +82,7 @@ final class AppState: ObservableObject {
                 || title.localizedCaseInsensitiveContains("settings")
                 || className.localizedCaseInsensitiveContains("settings")
         }
-        let targets = settingsWindows.isEmpty
-            ? NSApp.windows.filter { $0.styleMask.contains(.titled) && $0.canBecomeKey }
-            : settingsWindows
-        for window in targets {
+        for window in settingsWindows {
             window.deminiaturize(nil)
             window.collectionBehavior.insert(.moveToActiveSpace)
             window.makeKeyAndOrderFront(nil)
