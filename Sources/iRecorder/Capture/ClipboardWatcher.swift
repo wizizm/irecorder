@@ -5,7 +5,7 @@ import IRecorderCore
 final class ClipboardWatcher {
     var onEvent: ((CaptureEvent) -> Void)?
 
-    private var timer: Timer?
+    private var poller: Poller?
     private var lastChangeCount: Int = -1
     private var lastString: String?
 
@@ -13,16 +13,16 @@ final class ClipboardWatcher {
         stop()
         lastChangeCount = NSPasteboard.general.changeCount
         lastString = NSPasteboard.general.string(forType: .string)
-        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+        let poller = Poller(interval: 0.4) { [weak self] in
             self?.tick()
         }
-        RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
+        poller.start()
+        self.poller = poller
     }
 
     func stop() {
-        timer?.invalidate()
-        timer = nil
+        poller?.stop()
+        poller = nil
     }
 
     private func tick() {

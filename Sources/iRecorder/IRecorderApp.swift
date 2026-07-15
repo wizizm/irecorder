@@ -4,16 +4,31 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let appState = AppState()
-    private var didLaunch = false
+    private var didBootstrap = false
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        bootstrapCapture()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        guard !didLaunch else { return }
-        didLaunch = true
-        appState.startPromptingAccessibilityIfNeeded()
+        bootstrapCapture()
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        appState.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         appState.coordinator.stop()
+    }
+
+    func bootstrapCapture() {
+        guard !didBootstrap else {
+            appState.start()
+            return
+        }
+        didBootstrap = true
+        appState.startPromptingAccessibilityIfNeeded()
     }
 }
 
@@ -24,9 +39,10 @@ struct IRecorderApp: App {
     var body: some Scene {
         MenuBarExtra {
             MenuBarContent(appState: appDelegate.appState)
-                .onAppear { appDelegate.appState.start() }
+                .onAppear { appDelegate.bootstrapCapture() }
         } label: {
             MenuBarLabel(appState: appDelegate.appState)
+                .task { appDelegate.bootstrapCapture() }
         }
         .menuBarExtraStyle(.menu)
 

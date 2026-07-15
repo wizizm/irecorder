@@ -12,8 +12,9 @@ final class CaptureCoordinator {
     private let typeBuffer: TypeLineBuffer
     private let copyPasteMerger = CopyPasteMerger(mergeWindow: 3)
     private var writer: LogWriter
-    private var idleTimer: Timer?
+    private var idlePoller: Poller?
     private var didStart = false
+    private var activity: NSObjectProtocol?
     private let log = Logger(subsystem: "com.linwenjie.iRecorder", category: "capture")
 
     init(settings: SettingsStore) {
@@ -24,13 +25,22 @@ final class CaptureCoordinator {
 
     func start() {
         if didStart {
-            // Re-bind writer/dir and re-check AX after preference changes / re-grant.
             reloadWriter()
             syncIdleInterval()
             _ = AXWatcher.isTrusted(prompt: false)
             return
         }
         didStart = true
+
+        // Menu-bar apps are App-Nap / auto-termination candidates; that freezes timers and
+        // looks like "nothing is logged". Keep us awake while recording.
+        ProcessInfo.processInfo.disableAutomaticTermination("iRecorder is capturing")
+        ProcessInfo.processInfo.disableSuddenTermination()
+        activity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep, .latencyCritical],
+            reason: "iRecorder text capture"
+        )
+
         reloadWriter()
         syncIdleInterval()
         pruneIfNeeded()
@@ -44,20 +54,28 @@ final class CaptureCoordinator {
         clipboard.start()
         paste.start()
         returnKey.start()
-        startIdleTimer()
+        startIdlePoller()
+        writeSessionStarted()
         _ = AXWatcher.isTrusted(prompt: true)
-        log.info("capture started dir=\(self.settings.logDirectoryURL.path, privacy: .public)")
+        log.error("capture started dir=\(self.settings.logDirectoryURL.path, privacy: .public)")
     }
 
     func stop() {
-        idleTimer?.invalidate()
-        idleTimer = nil
+        idlePoller?.stop()
+        idlePoller = nil
         flushTypePending()
         writeAll(copyPasteMerger.flushPending())
         ax.stop()
         clipboard.stop()
         paste.stop()
         returnKey.stop()
+        if let activity {
+            ProcessInfo.processInfo.endActivity(activity)
+            self.activity = nil
+        }
+        ProcessInfo.processInfo.enableAutomaticTermination("iRecorder is capturing")
+        ProcessInfo.processInfo.enableSuddenTermination()
+        didStart = false
     }
 
     func reloadWriter() {
@@ -85,14 +103,30 @@ final class CaptureCoordinator {
         return settings.logDirectoryURL.appendingPathComponent(name)
     }
 
-    private func startIdleTimer() {
-        idleTimer?.invalidate()
-        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+    private func startIdlePoller() {
+        idlePoller?.stop()
+        let poller = Poller(interval: 0.25) { [weak self] in
             self?.flushTypeIfIdle()
             self?.flushCopyPasteIfExpired()
         }
-        RunLoop.main.add(timer, forMode: .common)
-        idleTimer = timer
+        poller.start()
+        idlePoller = poller
+    }
+
+    private func writeSessionStarted() {
+        // Bypass SelfCaptureFilter so we can prove capture/write path is alive.
+        let event = CaptureEvent(
+            kind: .type,
+            appName: "System",
+            payload: "session_started",
+            date: Date()
+        )
+        do {
+            try writer.append(event, maxPayloadBytes: nil)
+            log.error("wrote session_started")
+        } catch {
+            log.error("session_started write failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     private func wire(_ watcher: AXWatcher) {
@@ -174,7 +208,6 @@ final class CaptureCoordinator {
         writeAll(copyPasteMerger.tick())
     }
 
-    /// Backup for Timer: MenuBarExtra apps sometimes starve timer callbacks briefly.
     private func scheduleCopyPasteExpiry() {
         let delay = copyPasteMerger.mergeWindow + 0.05
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -218,7 +251,7 @@ final class CaptureCoordinator {
                 configured: settings.clipboardTruncateMaxBytes
             )
             try writer.append(event, maxPayloadBytes: maxBytes)
-            log.info("wrote \(event.kind.rawValue, privacy: .public) app=\(event.appName, privacy: .public) bytes=\(event.payload.utf8.count)")
+            log.error("wrote \(event.kind.rawValue, privacy: .public) app=\(event.appName, privacy: .public) bytes=\(event.payload.utf8.count)")
         } catch {
             log.error("append failed: \(error.localizedDescription, privacy: .public)")
         }

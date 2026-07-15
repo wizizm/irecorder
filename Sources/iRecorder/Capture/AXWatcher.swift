@@ -4,27 +4,26 @@ import Foundation
 import IRecorderCore
 
 /// Polls the focused AX element for committed text insertions.
-/// ponytail: 250ms poll instead of full AXObserver graph; ceiling ~latency; upgrade to AXObserver if needed.
 final class AXWatcher {
     var onEvent: ((CaptureEvent) -> Void)?
 
-    private var timer: Timer?
+    private var poller: Poller?
     private var lastValue = ""
     private var lastElement: AXUIElement?
     private var wasSecure = false
 
     func start() {
         stop()
-        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+        let poller = Poller(interval: 0.25) { [weak self] in
             self?.tick()
         }
-        RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
+        poller.start()
+        self.poller = poller
     }
 
     func stop() {
-        timer?.invalidate()
-        timer = nil
+        poller?.stop()
+        poller = nil
     }
 
     static func isTrusted(prompt: Bool) -> Bool {
