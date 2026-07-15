@@ -28,28 +28,34 @@ struct MenuBarContent: View {
 struct MenuBarLabel: View {
     @ObservedObject var appState: AppState
 
+    /// Menu bar glyphs are ~16–18pt; larger bitmaps must declare this size explicitly.
+    private static let pointSize: CGFloat = 16
+
     var body: some View {
         Group {
             if let image = Self.bundledMenuIcon() {
                 Image(nsImage: image)
+                    .renderingMode(.original)
                     .resizable()
+                    .interpolation(.high)
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 18, height: 18)
+                    .frame(width: Self.pointSize, height: Self.pointSize)
                     .opacity(appState.isRecording ? 1.0 : 0.45)
             } else {
                 Image(systemName: appState.isRecording ? "dot.circle.fill" : "pause.circle")
                     .symbolRenderingMode(.hierarchical)
             }
         }
+        .frame(width: Self.pointSize, height: Self.pointSize)
         .accessibilityLabel(appState.isRecording ? "iRecorder 记录中" : "iRecorder 已暂停")
     }
 
     private static func bundledMenuIcon() -> NSImage? {
-        if let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
-           let image = NSImage(contentsOf: url) {
-            image.isTemplate = false
-            return image
-        }
-        return nil
+        guard let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
+              let image = NSImage(contentsOf: url) else { return nil }
+        // Critical: AppKit draws status items by NSImage.size (points), not pixel count.
+        image.size = NSSize(width: pointSize, height: pointSize)
+        image.isTemplate = false
+        return image
     }
 }
