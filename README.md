@@ -1,29 +1,29 @@
 # iRecorder
 
-macOS 菜单栏小工具：在本机记录你在各 App 里**已上屏的文字**（含中文输入法确认后的汉字，不是按键码）、**复制**，以及 **⌘V 粘贴**。按天写入本地 UTF-8 `.log`，不上传网络。
+[English](./README.md) | [简体中文](./README.zh-CN.md)
 
-A tiny macOS menu bar logger for committed text input (including CJK IME), clipboard copy, and paste — local daily logs only.
+macOS menu bar utility that logs **committed on-screen text** (including CJK after IME confirm — not keycodes), **clipboard copy**, and **⌘V paste**. Writes daily local UTF-8 `.log` files. Nothing is uploaded.
 
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)
 ![License MIT](https://img.shields.io/badge/License-MIT-blue)
 
-## 功能
+## Features
 
-- **打字**：通过辅助功能读取已上屏文本差分；中文输入法下忽略拼音组字过程，只记确认后的汉字
-- **复制 / 粘贴**：监听剪贴板与全局 ⌘V；短时间内「复制后立刻粘贴同一段」合并为 `copy_paste`
-- **按行缓冲**：停输 N 秒（默认 3，可调）写一行；按 Enter 立即换行
-- **菜单栏**：暂停 / 继续、打开今日日志、设置（目录、保留天数、截断、开机启动）
-- **隐私友好**：数据仅存本机；密码框内打字不记录
+- **Typing** — Accessibility value diffs for committed text; under Chinese IME, skips pinyin composition and keeps confirmed characters only
+- **Copy / paste** — Watches the pasteboard and global ⌘V; a copy followed quickly by the same paste merges into `copy_paste`
+- **Line buffering** — Flush after N seconds idle (default 3, configurable), or immediately on Enter
+- **Menu bar** — Pause / resume, open today’s log, settings (directory, retention, truncation, launch at login)
+- **Privacy-friendly** — Data stays on disk; typing in password / secure fields is not recorded
 
-## 系统要求
+## Requirements
 
 - macOS 14+
-- **辅助功能**权限（打字采集 + 全局粘贴热键）
+- **Accessibility** permission (text capture + global paste hotkey)
 
-## 安装
+## Install
 
-### 从源码打包（推荐）
+### Build from source (recommended)
 
 ```bash
 git clone https://github.com/wizizm/irecorder.git
@@ -31,32 +31,32 @@ cd irecorder
 ./scripts/package-app.sh
 ```
 
-脚本会：
+The script will:
 
 1. `swift build -c release`
-2. 生成 `dist/iRecorder.app`
-3. 安装到 `/Applications/iRecorder.app` 并打开
+2. Produce `dist/iRecorder.app`
+3. Install to `/Applications/iRecorder.app` and open it
 
-只打包、不装到「应用程序」：
+Package only (skip `/Applications`):
 
 ```bash
 IRECORDER_SKIP_INSTALL=1 ./scripts/package-app.sh
 ```
 
-> 当前使用 ad-hoc 签名。每次重新安装后，请到 **系统设置 → 隐私与安全性 → 辅助功能** 重新确认勾选 **iRecorder**（路径应为 `/Applications/iRecorder.app`）。
+> The build uses ad-hoc signing. After every reinstall, re-check **System Settings → Privacy & Security → Accessibility** for **iRecorder** (path should be `/Applications/iRecorder.app`).
 
-### 首次使用
+### First run
 
-1. 点击菜单栏橙色 **iR** 图标  
-2. 若显示辅助功能未生效：菜单或设置里点 **打开设置**，勾选 iRecorder  
-3. **退出并重新打开** App（macOS 勾选后往往要重启进程才生效）  
-4. 默认日志目录：`~/Documents/iRecorder/`
+1. Click the orange **iR** menu bar icon  
+2. If Accessibility is inactive: **Open Settings** from the menu or Settings pane, then enable iRecorder  
+3. **Quit and relaunch** the app (macOS often does not apply the grant until process restart)  
+4. Default log directory: `~/Documents/iRecorder/`
 
-启动成功后，当日 log 中应很快出现一行 `session_started`。
+Once capture starts, today’s log should soon contain a `session_started` line.
 
-## 日志格式
+## Log format
 
-一天一个文件：`YYYY-MM-DD.log`
+One file per day: `YYYY-MM-DD.log`
 
 ```text
 2026-07-15T16:12:03+08:00	type	Safari	你好世界
@@ -65,61 +65,59 @@ IRECORDER_SKIP_INSTALL=1 ./scripts/package-app.sh
 2026-07-15T16:12:25+08:00	paste	Notes	pasted later
 ```
 
-| 列 | 说明 |
+| Column | Meaning |
 | --- | --- |
-| 时间 | ISO 8601 |
-| 类型 | `type` / `copy` / `paste` / `copy_paste` |
-| App | 前台应用名；跨 App 粘贴时形如 `A→B` |
-| 正文 | 原文；换行 / 制表符 / `\` 转义为 `\n` / `\t` / `\\` |
+| Time | ISO 8601 |
+| Kind | `type` / `copy` / `paste` / `copy_paste` |
+| App | Frontmost app; cross-app paste looks like `A→B` |
+| Payload | Original text; newline / tab / `\` escaped as `\n` / `\t` / `\\` |
 
-- 复制 / 粘贴超过设置长度会截断并附加 ` [truncated]`（默认 100 KB，`0` = 不截断）；**打字不截断**
-- 不会把「自己的 log 内容」再记一遍（避免在控制台打开 log 时转义膨胀）
-- 粘贴后的 AX 回声不会再多记一条 `type`
+- Copy / paste beyond the configured size is truncated with ` [truncated]` (default 100 KB; `0` = no truncate). **Typing is never truncated.**
+- The app’s own log content is not re-captured (avoids escape blow-up when a log is open in Console)
+- AX echo after paste is not logged again as `type`
 
-## 设置项
+## Settings
 
-| 项 | 说明 |
+| Setting | Notes |
 | --- | --- |
-| 日志目录 | 默认 `~/Documents/iRecorder` |
-| 保留天数 | `0` = 永不自动删 |
-| 复制/粘贴截断 | KB；`0` = 不截断 |
-| 打字换行等待 | 1–60 秒 |
-| 登录时启动 | 需安装为 `.app`（放入 Applications 后更可靠） |
+| Log directory | Default `~/Documents/iRecorder` |
+| Retention days | `0` = never auto-delete |
+| Copy / paste truncate | KB; `0` = unlimited |
+| Type-line idle | 1–60 seconds |
+| Launch at login | Needs a real `.app` (more reliable under Applications) |
 
-## 限制
+## Limitations
 
-- 高度自绘、游戏、部分 Electron / 自定义控件可能读不到文字
-- 密码 / Secure 字段的**打字**不记录；若内容已被复制到剪贴板，复制/粘贴仍可能记下
-- ad-hoc 签名无公证；Gatekeeper 可能提示，需在隐私设置中手动授权
+- Highly custom-drawn UIs, games, and some Electron / custom controls may not expose text via Accessibility
+- Typing in password / Secure fields is skipped; if text is already on the clipboard, copy / paste may still be logged
+- Ad-hoc signature is not notarized; Gatekeeper may warn — grant Accessibility manually
 
-## 开发
+## Development
 
 ```bash
-swift test          # 核心库单元测试
-swift run iRecorder # 直接跑可执行文件（无完整 .app 时，登录项等能力受限）
+swift test          # core library unit tests
+swift run iRecorder # run the executable (login item etc. limited without a full .app)
 ```
 
-架构概览：
-
-| 目标 | 职责 |
+| Target | Role |
 | --- | --- |
-| `IRecorderCore` | 文本差分、行缓冲、格式化、写文件、设置（有测试） |
-| `iRecorder` | AX / 剪贴板 / ⌘V、菜单栏与设置 UI、打包为 `.app` |
+| `IRecorderCore` | Diff, buffering, formatting, file I/O, settings (tested) |
+| `iRecorder` | AX / pasteboard / ⌘V, menu bar & settings UI, `.app` packaging |
 
 ```text
 Sources/
-  IRecorderCore/     # 纯逻辑
-  iRecorder/         # App + Capture + UI
+  IRecorderCore/     # pure logic
+  iRecorder/         # app + capture + UI
 Tests/
   IRecorderCoreTests/
 scripts/
-  package-app.sh     # release 打包 → dist/ → /Applications
-Resources/           # AppIcon.icns、MenuBarIcon.png
+  package-app.sh     # release build → dist/ → /Applications
+Resources/           # AppIcon.icns, MenuBarIcon.png
 ```
 
-## 隐私
+## Privacy
 
-iRecorder **不收集、不上传**任何数据。日志只写在你指定的本地目录。辅助功能权限仅用于读取已上屏文本与监听粘贴快捷键。
+iRecorder **does not collect or upload** any data. Logs are written only to the directory you choose. Accessibility is used solely to read committed on-screen text and observe the paste hotkey.
 
 ## License
 
