@@ -3,14 +3,18 @@ import PackageDescription
 
 let package = Package(
     name: "iRecorder",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v14)],
     products: [
         .library(name: "IRecorderCore", targets: ["IRecorderCore"]),
         .executable(name: "iRecorder", targets: ["iRecorder"]),
     ],
     targets: [
         .target(name: "IRecorderCore"),
-        .executableTarget(name: "iRecorder", dependencies: ["IRecorderCore"]),
+        .executableTarget(
+            name: "iRecorder",
+            dependencies: ["IRecorderCore"],
+            exclude: ["Info.plist"]
+        ),
         .testTarget(name: "IRecorderCoreTests", dependencies: ["IRecorderCore"]),
     ]
 )

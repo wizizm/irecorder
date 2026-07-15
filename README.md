@@ -1,0 +1,56 @@
+# iRecorder
+
+macOS 菜单栏工具：记录各 App 中**已上屏的输入文字**（含中文输入法确认后的汉字，不是按键码）、**复制**到剪贴板的文本，以及 **Cmd+V 粘贴**的文本。按天写入本地 UTF-8 `.log` 文件。
+
+## 要求
+
+- macOS 14+
+- 授予 **辅助功能** 权限（打字采集 + 全局粘贴监听）
+
+## 构建与安装
+
+```bash
+./scripts/package-app.sh
+# 生成 dist/iRecorder.app
+# 拖到 /Applications 后双击启动
+```
+
+开发调试：
+
+```bash
+swift test
+swift run iRecorder
+```
+
+> 登录项（开机启动）仅在打包成 `.app` 并放入 Applications 后可靠生效。
+
+## 首次使用
+
+1. 启动后点击菜单栏圆点图标  
+2. 若提示未授权 → **授予辅助功能权限…**，在系统设置中勾选 iRecorder  
+3. 默认日志目录：`~/Documents/iRecorder/`  
+4. 设置里可改目录、保留天数、登录启动  
+
+## 日志格式
+
+一天一个文件：`YYYY-MM-DD.log`
+
+```text
+2026-07-15T16:12:03+08:00	type	Safari	你好世界
+2026-07-15T16:12:10+08:00	copy	Finder	clipboard text
+2026-07-15T16:12:12+08:00	paste	Notes	clipboard text
+```
+
+字段：`时间`、`type|copy|paste`、`前台 App`、`原文`（换行/制表符转义为 `\n` / `\t`）。  
+超过约 100KB 的单条内容会截断并附加 ` [truncated]`。  
+密码框 / Secure 字段不会被记录。
+
+## 限制
+
+- 高度自绘、游戏、部分 Electron 控件可能无法通过辅助功能读到文字  
+- 数据只存本机，不上传  
+
+## 架构
+
+- `IRecorderCore`：差分、格式化、写文件、设置（单元测试覆盖）  
+- `iRecorder`：AX 轮询、剪贴板、粘贴快捷键、菜单栏 UI  
