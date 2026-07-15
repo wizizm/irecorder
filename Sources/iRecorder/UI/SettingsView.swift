@@ -63,10 +63,23 @@ struct SettingsView: View {
 
             groupTitle("权限与启动")
 
-            HStack {
-                Text(appState.accessibilityTrusted ? "辅助功能：已授权" : "辅助功能：未授权")
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(appState.accessibilityTrusted ? "辅助功能：已授权" : "辅助功能：未生效")
+                    if !appState.accessibilityTrusted {
+                        Text("系统里勾选后，须退出并重新打开本 App 才会变成已授权")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 Spacer(minLength: 8)
-                Button("打开设置") { appState.promptAccessibility() }
+                VStack(alignment: .trailing, spacing: 6) {
+                    Button("打开设置") { appState.promptAccessibility() }
+                    if !appState.accessibilityTrusted {
+                        Button("退出并重开") { appState.relaunchToApplyAccessibility() }
+                    }
+                }
             }
 
             Toggle("登录时启动", isOn: Binding(
@@ -75,10 +88,13 @@ struct SettingsView: View {
             ))
         }
         .padding(20)
-        .frame(width: 400, height: 480)
+        .frame(width: 400, height: 520)
         .onAppear {
             retentionText = String(appState.retentionDays)
             truncateKBText = String(appState.clipboardTruncateMaxKB)
+            appState.refreshAccessibility()
+        }
+        .onReceive(Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()) { _ in
             appState.refreshAccessibility()
         }
         .onDisappear {

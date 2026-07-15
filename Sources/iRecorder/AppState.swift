@@ -37,6 +37,8 @@ final class AppState: ObservableObject {
         refreshAccessibility()
     }
 
+    /// macOS often keeps AXIsProcessTrusted() false until the process is restarted after granting.
+
     /// Start capture without popping permission UI (re-check status quietly).
     func startPromptingAccessibilityIfNeeded() {
         start()
@@ -57,6 +59,27 @@ final class AppState: ObservableObject {
         refreshAccessibility()
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)
+        }
+        // After user toggles the checkbox, status usually updates only after relaunch.
+        for delay in [0.5, 1.0, 2.0, 3.0] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.refreshAccessibility()
+            }
+        }
+    }
+
+    /// Quit and reopen so Accessibility grant takes effect for this process.
+    func relaunchToApplyAccessibility() {
+        let appURL = Bundle.main.bundleURL
+        let config = NSWorkspace.OpenConfiguration()
+        NSWorkspace.shared.openApplication(at: appURL, configuration: config) { _, _ in
+            DispatchQueue.main.async {
+                NSApp.terminate(nil)
+            }
+        }
+        // Fallback terminate if open callback is delayed.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            NSApp.terminate(nil)
         }
     }
 
