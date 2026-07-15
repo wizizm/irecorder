@@ -60,6 +60,42 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Open Settings (or bring an already-open Settings window above other apps).
+    func openSettingsWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        bringSettingsWindowForward()
+        // Window may be created asynchronously on first open.
+        DispatchQueue.main.async { [weak self] in
+            self?.bringSettingsWindowForward()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.bringSettingsWindowForward()
+        }
+    }
+
+    private func bringSettingsWindowForward() {
+        NSApp.activate(ignoringOtherApps: true)
+        let settingsWindows = NSApp.windows.filter { window in
+            let id = window.identifier?.rawValue ?? ""
+            let title = window.title
+            let className = String(describing: type(of: window))
+            return id.localizedCaseInsensitiveContains("settings")
+                || title.contains("设置")
+                || title.localizedCaseInsensitiveContains("settings")
+                || className.localizedCaseInsensitiveContains("settings")
+        }
+        let targets = settingsWindows.isEmpty
+            ? NSApp.windows.filter { $0.styleMask.contains(.titled) && $0.canBecomeKey }
+            : settingsWindows
+        for window in targets {
+            window.deminiaturize(nil)
+            window.collectionBehavior.insert(.moveToActiveSpace)
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+        }
+    }
+
     func openTodayLog() {
         let url = coordinator.todayLogURL()
         try? FileManager.default.createDirectory(

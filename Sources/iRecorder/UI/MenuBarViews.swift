@@ -15,8 +15,8 @@ struct MenuBarContent: View {
         if !appState.accessibilityTrusted {
             Button("授予辅助功能权限…") { appState.promptAccessibility() }
         }
-        SettingsLink {
-            Text("设置…")
+        Button("设置…") {
+            appState.openSettingsWindow()
         }
         Divider()
         Button("退出") {
