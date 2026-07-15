@@ -7,6 +7,7 @@ final class CaptureCoordinator {
     private let ax = AXWatcher()
     private let clipboard = ClipboardWatcher()
     private let paste = PasteDetector()
+    private let typeSuppressor = InsertionSuppressor()
     private var writer: LogWriter
     private let log = Logger(subsystem: "com.linwenjie.iRecorder", category: "capture")
 
@@ -39,6 +40,10 @@ final class CaptureCoordinator {
 
     func pruneIfNeeded() {
         do {
+            try FileManager.default.createDirectory(
+                at: settings.logDirectoryURL,
+                withIntermediateDirectories: true
+            )
             try writer.prune(retainDays: settings.retentionDays)
         } catch {
             log.error("prune failed: \(error.localizedDescription, privacy: .public)")
