@@ -32,18 +32,14 @@ struct MenuBarContent: View {
 struct MenuBarLabel: View {
     @ObservedObject var appState: AppState
 
-    /// Match neighboring menu bar icons (~18–22pt visual height).
-    private static let pointSize: CGFloat = 20
+    /// Native status items sit near 16–18pt. Asset must be exactly 2× pixels (36×36).
+    private static let pointSize: CGFloat = 18
 
     var body: some View {
         Group {
             if let image = Self.bundledMenuIcon() {
                 Image(nsImage: image)
                     .renderingMode(.original)
-                    .resizable()
-                    .interpolation(.high)
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: Self.pointSize, height: Self.pointSize)
                     .opacity(appState.isRecording ? 1.0 : 0.45)
             } else {
                 Image(systemName: appState.isRecording ? "dot.circle.fill" : "pause.circle")
@@ -56,9 +52,15 @@ struct MenuBarLabel: View {
 
     private static func bundledMenuIcon() -> NSImage? {
         guard let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
-              let image = NSImage(contentsOf: url) else { return nil }
-        // Critical: AppKit draws status items by NSImage.size (points), not pixel count.
-        image.size = NSSize(width: pointSize, height: pointSize)
+              let source = NSImage(contentsOf: url),
+              let cgImage = source.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        else { return nil }
+
+        // Tag the bitmap as @2x: pixel size / point size == 2. Oversized @4x bitmaps look soft on Retina.
+        let rep = NSBitmapImageRep(cgImage: cgImage)
+        rep.size = NSSize(width: pointSize, height: pointSize)
+        let image = NSImage(size: NSSize(width: pointSize, height: pointSize))
+        image.addRepresentation(rep)
         image.isTemplate = false
         return image
     }

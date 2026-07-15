@@ -37,8 +37,6 @@ final class AppState: ObservableObject {
         refreshAccessibility()
     }
 
-    /// macOS often keeps AXIsProcessTrusted() false until the process is restarted after granting.
-
     /// Start capture without popping permission UI (re-check status quietly).
     func startPromptingAccessibilityIfNeeded() {
         start()
