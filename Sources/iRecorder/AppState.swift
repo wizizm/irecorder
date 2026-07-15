@@ -15,6 +15,8 @@ final class AppState: ObservableObject {
     @Published var loginItemEnabled: Bool
     @Published var retentionDays: Int
     @Published var logDirectoryPath: String
+    /// Display unit: kilobytes (1000 bytes). 0 = unlimited.
+    @Published var clipboardTruncateMaxKB: Int
 
     init(settings: SettingsStore = SettingsStore()) {
         self.settings = settings
@@ -24,6 +26,7 @@ final class AppState: ObservableObject {
         self.loginItemEnabled = settings.launchAtLogin
         self.retentionDays = settings.retentionDays
         self.logDirectoryPath = settings.logDirectoryURL.path
+        self.clipboardTruncateMaxKB = settings.clipboardTruncateMaxBytes / 1000
     }
 
     func start() {
@@ -86,6 +89,11 @@ final class AppState: ObservableObject {
         retentionDays = max(0, days)
         settings.retentionDays = retentionDays
         coordinator.pruneIfNeeded()
+    }
+
+    func updateClipboardTruncateMaxKB(_ kb: Int) {
+        clipboardTruncateMaxKB = max(0, kb)
+        settings.clipboardTruncateMaxBytes = clipboardTruncateMaxKB * 1000
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {

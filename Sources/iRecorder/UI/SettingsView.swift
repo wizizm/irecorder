@@ -21,6 +21,14 @@ struct SettingsView: View {
                          ? "保留天数：永不删除"
                          : "保留天数：\(appState.retentionDays) 天")
                 }
+                Stepper(value: Binding(
+                    get: { appState.clipboardTruncateMaxKB },
+                    set: { appState.updateClipboardTruncateMaxKB($0) }
+                ), in: 0...10_000) {
+                    Text(appState.clipboardTruncateMaxKB == 0
+                         ? "复制/粘贴截断：不截断"
+                         : "复制/粘贴截断：\(appState.clipboardTruncateMaxKB) KB")
+                }
             }
             Section("权限与启动") {
                 HStack {
@@ -35,6 +43,6 @@ struct SettingsView: View {
             }
         }
         .padding()
-        .frame(width: 480, height: 240)
+        .frame(width: 520, height: 280)
     }
 }

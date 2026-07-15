@@ -18,9 +18,14 @@ public final class LogWriter: @unchecked Sendable {
         self.fileManager = fileManager
     }
 
-    public func append(_ event: CaptureEvent) throws {
+    public func append(_ event: CaptureEvent, maxPayloadBytes: Int? = PayloadTruncator.defaultMaxBytes) throws {
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-        let payload = PayloadTruncator.truncate(event.payload)
+        let payload: String
+        if let maxPayloadBytes {
+            payload = PayloadTruncator.truncate(event.payload, maxBytes: maxPayloadBytes)
+        } else {
+            payload = event.payload
+        }
         let truncated = CaptureEvent(
             kind: event.kind,
             appName: event.appName,

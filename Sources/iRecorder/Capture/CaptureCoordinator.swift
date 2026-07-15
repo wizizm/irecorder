@@ -69,8 +69,20 @@ final class CaptureCoordinator {
 
     private func handle(_ event: CaptureEvent) {
         guard settings.isRecording else { return }
+        switch event.kind {
+        case .paste:
+            typeSuppressor.notePaste(event.payload)
+        case .type:
+            if typeSuppressor.shouldSuppressType(event.payload) { return }
+        case .copy:
+            break
+        }
         do {
-            try writer.append(event)
+            let maxBytes = PayloadTruncatePolicy.maxBytes(
+                for: event.kind,
+                configured: settings.clipboardTruncateMaxBytes
+            )
+            try writer.append(event, maxPayloadBytes: maxBytes)
         } catch {
             log.error("append failed: \(error.localizedDescription, privacy: .public)")
         }

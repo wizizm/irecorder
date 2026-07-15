@@ -22,11 +22,24 @@ import Testing
     let writer = LogWriter(directory: dir)
     let huge = String(repeating: "x", count: 100_010)
     let event = CaptureEvent(kind: .type, appName: "App", payload: "a\nb", date: Date())
-    try writer.append(event)
+    try writer.append(event, maxPayloadBytes: nil)
     let hugeEvent = CaptureEvent(kind: .copy, appName: "App", payload: huge, date: Date())
-    try writer.append(hugeEvent)
+    try writer.append(hugeEvent, maxPayloadBytes: 100_000)
     let name = LogFileNamer.fileName(for: event.date)
     let text = try String(contentsOf: dir.appendingPathComponent(name), encoding: .utf8)
     #expect(text.contains("a\\nb"))
     #expect(text.contains(" [truncated]"))
+}
+
+@Test func appendRespectsCustomClipboardMaxBytes() throws {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let writer = LogWriter(directory: dir)
+    let payload = String(repeating: "y", count: 500)
+    let event = CaptureEvent(kind: .paste, appName: "Notes", payload: payload, date: Date())
+    try writer.append(event, maxPayloadBytes: 100)
+    let name = LogFileNamer.fileName(for: event.date)
+    let text = try String(contentsOf: dir.appendingPathComponent(name), encoding: .utf8)
+    #expect(text.contains(" [truncated]"))
+    #expect(!text.contains(payload))
 }

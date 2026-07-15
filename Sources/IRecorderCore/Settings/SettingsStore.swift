@@ -8,6 +8,7 @@ public final class SettingsStore: @unchecked Sendable {
         static let retentionDays = "retentionDays"
         static let launchAtLogin = "launchAtLogin"
         static let isRecording = "isRecording"
+        static let clipboardTruncateMaxBytes = "clipboardTruncateMaxBytes"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -48,6 +49,17 @@ public final class SettingsStore: @unchecked Sendable {
             return defaults.bool(forKey: Key.isRecording)
         }
         set { defaults.set(newValue, forKey: Key.isRecording) }
+    }
+
+    /// Max UTF-8 bytes kept for copy/paste payloads. `0` = no truncation. Default 100_000.
+    public var clipboardTruncateMaxBytes: Int {
+        get {
+            if defaults.object(forKey: Key.clipboardTruncateMaxBytes) == nil {
+                return PayloadTruncator.defaultMaxBytes
+            }
+            return max(0, defaults.integer(forKey: Key.clipboardTruncateMaxBytes))
+        }
+        set { defaults.set(max(0, newValue), forKey: Key.clipboardTruncateMaxBytes) }
     }
 
     public static var defaultLogDirectory: URL {
