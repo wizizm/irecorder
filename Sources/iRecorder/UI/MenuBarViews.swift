@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct MenuBarContent: View {
@@ -28,8 +29,27 @@ struct MenuBarLabel: View {
     @ObservedObject var appState: AppState
 
     var body: some View {
-        Image(systemName: appState.isRecording ? "dot.circle.fill" : "pause.circle")
-            .symbolRenderingMode(.hierarchical)
-            .accessibilityLabel(appState.isRecording ? "iRecorder 记录中" : "iRecorder 已暂停")
+        Group {
+            if let image = Self.bundledMenuIcon() {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 18, height: 18)
+                    .opacity(appState.isRecording ? 1.0 : 0.45)
+            } else {
+                Image(systemName: appState.isRecording ? "dot.circle.fill" : "pause.circle")
+                    .symbolRenderingMode(.hierarchical)
+            }
+        }
+        .accessibilityLabel(appState.isRecording ? "iRecorder 记录中" : "iRecorder 已暂停")
+    }
+
+    private static func bundledMenuIcon() -> NSImage? {
+        if let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            image.isTemplate = false
+            return image
+        }
+        return nil
     }
 }
