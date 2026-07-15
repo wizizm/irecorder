@@ -48,6 +48,7 @@ struct IRecorderApp: App {
 
         Settings {
             SettingsView(appState: appDelegate.appState)
+                .frame(width: 400, height: 480)
         }
     }
 }
