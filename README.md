@@ -26,7 +26,7 @@ A tiny macOS menu bar logger for committed text input (including CJK IME), clipb
 ### 从源码打包（推荐）
 
 ```bash
-git clone https://github.com/<you>/irecorder.git
+git clone https://github.com/wizizm/irecorder.git
 cd irecorder
 ./scripts/package-app.sh
 ```
