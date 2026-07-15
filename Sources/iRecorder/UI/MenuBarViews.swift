@@ -28,8 +28,8 @@ struct MenuBarContent: View {
 struct MenuBarLabel: View {
     @ObservedObject var appState: AppState
 
-    /// Menu bar glyphs are ~16–18pt; larger bitmaps must declare this size explicitly.
-    private static let pointSize: CGFloat = 16
+    /// Match neighboring menu bar icons (~18–22pt visual height).
+    private static let pointSize: CGFloat = 20
 
     var body: some View {
         Group {
