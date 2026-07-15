@@ -106,6 +106,12 @@ final class CaptureCoordinator {
             write(event)
         case .type:
             if typeSuppressor.shouldSuppressType(event.payload) { return }
+            if CompositionInsertionFilter.shouldIgnore(
+                insertion: event.payload,
+                chineseIMEActive: InputSourceProbe.isChineseIMEActive()
+            ) {
+                return
+            }
             syncIdleInterval()
             let flushes = typeBuffer.ingest(
                 appName: event.appName,
