@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import IRecorderCore
 import os.log
@@ -5,10 +6,11 @@ import os.log
 final class CaptureCoordinator {
     private let settings: SettingsStore
     private let ax = AXWatcher()
+    private let keyInsertion = KeyInsertionWatcher()
     private let clipboard = ClipboardWatcher()
     private let paste = PasteDetector()
-    private let returnKey = ReturnKeyDetector()
     private let typeSuppressor = InsertionSuppressor()
+    private let compositionHold = CompositionHoldBuffer(holdInterval: 0.45)
     private let typeBuffer: TypeLineBuffer
     private let copyPasteMerger = CopyPasteMerger(mergeWindow: 3)
     private var writer: LogWriter
@@ -45,20 +47,20 @@ final class CaptureCoordinator {
         syncIdleInterval()
         pruneIfNeeded()
         wire(ax)
+        keyInsertion.focus = ax.focusCoverage
+        keyInsertion.onEvent = { [weak self] event in self?.handle(event) }
         wire(clipboard)
         wire(paste)
-        returnKey.onReturn = { [weak self] in
-            self?.flushTypeEnter()
-        }
         ax.start()
+        keyInsertion.start()
         clipboard.start()
         paste.start()
-        returnKey.start()
         startIdlePoller()
         writeSessionStarted()
-        // Never prompt here — opening the AX dialog on every launch is annoying.
-        // User can grant via Settings / menu "授予辅助功能权限…".
-        _ = AXWatcher.isTrusted(prompt: false)
+        // Prompt only when untrusted (adhoc reinstall often clears TCC). Never nag once granted.
+        if !AXWatcher.isTrusted(prompt: false) {
+            _ = AXWatcher.isTrusted(prompt: true)
+        }
         log.error("capture started dir=\(self.settings.logDirectoryURL.path, privacy: .public)")
     }
 
@@ -68,9 +70,9 @@ final class CaptureCoordinator {
         flushTypePending()
         writeAll(copyPasteMerger.flushPending())
         ax.stop()
+        keyInsertion.stop()
         clipboard.stop()
         paste.stop()
-        returnKey.stop()
         if let activity {
             ProcessInfo.processInfo.endActivity(activity)
             self.activity = nil
@@ -108,6 +110,7 @@ final class CaptureCoordinator {
     private func startIdlePoller() {
         idlePoller?.stop()
         let poller = Poller(interval: 0.25) { [weak self] in
+            self?.flushCompositionHoldIfIdle()
             self?.flushTypeIfIdle()
             self?.flushCopyPasteIfExpired()
         }
@@ -117,15 +120,19 @@ final class CaptureCoordinator {
 
     private func writeSessionStarted() {
         // Bypass SelfCaptureFilter so we can prove capture/write path is alive.
+        let ax = AXWatcher.isTrusted(prompt: false)
         let event = CaptureEvent(
             kind: .type,
             appName: "System",
-            payload: "session_started",
+            payload: ax ? "session_started ax=1" : "session_started ax=0",
             date: Date()
         )
         do {
             try writer.append(event, maxPayloadBytes: nil)
-            log.error("wrote session_started")
+            log.error("wrote session_started ax=\(ax)")
+            if !ax {
+                log.error("AX not trusted — typing capture is idle; re-check Accessibility and relaunch")
+            }
         } catch {
             log.error("session_started write failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -169,37 +176,59 @@ final class CaptureCoordinator {
             write(event)
         case .type:
             if typeSuppressor.shouldSuppressType(event.payload) { return }
-            if CompositionInsertionFilter.shouldIgnore(
+            let pieces = compositionHold.ingest(
                 insertion: event.payload,
-                chineseIMEActive: InputSourceProbe.isChineseIMEActive()
-            ) {
-                return
-            }
-            writeAll(copyPasteMerger.noteInterruptingActivity(at: event.date))
-            syncIdleInterval()
-            let flushes = typeBuffer.ingest(
-                appName: event.appName,
-                insertion: event.payload,
+                chineseIMEActive: InputSourceProbe.isChineseIMEActive(),
+                fieldValue: fieldValueForHold(event),
                 at: event.date
             )
+            guard !pieces.isEmpty else { return }
+            writeAll(copyPasteMerger.noteInterruptingActivity(at: event.date))
+            syncIdleInterval()
+            for piece in pieces {
+                let flushes = typeBuffer.ingest(
+                    appName: event.appName,
+                    insertion: piece,
+                    at: event.date
+                )
+                for flush in flushes {
+                    writeTypeFlush(flush)
+                }
+            }
+        }
+    }
+
+    private func flushCompositionHoldIfIdle() {
+        guard settings.isRecording else { return }
+        let pieces = compositionHold.tick(at: Date(), fieldValue: currentHoldFieldValue())
+        guard !pieces.isEmpty else { return }
+        let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "Unknown"
+        let now = Date()
+        writeAll(copyPasteMerger.noteInterruptingActivity(at: now))
+        syncIdleInterval()
+        for piece in pieces {
+            let flushes = typeBuffer.ingest(appName: app, insertion: piece, at: now)
             for flush in flushes {
                 writeTypeFlush(flush)
             }
         }
     }
 
-    private func flushTypeEnter() {
-        guard settings.isRecording else { return }
-        writeAll(copyPasteMerger.noteInterruptingActivity())
-        if let flush = typeBuffer.noteEnter() {
-            writeTypeFlush(flush)
-        }
+    /// AX events carry `fieldValue`; key-fallback must not reuse a previous app's AX string.
+    private func fieldValueForHold(_ event: CaptureEvent) -> String? {
+        if let fieldValue = event.fieldValue { return fieldValue }
+        return currentHoldFieldValue()
+    }
+
+    private func currentHoldFieldValue() -> String? {
+        guard ax.focusCoverage.focusedExposesStringValue else { return nil }
+        return ax.latestFieldValue
     }
 
     private func flushTypeIfIdle() {
         guard settings.isRecording else { return }
         syncIdleInterval()
-        if let flush = typeBuffer.tick() {
+        if let flush = typeBuffer.tick(at: Date()) {
             writeAll(copyPasteMerger.noteInterruptingActivity(at: flush.date))
             writeTypeFlush(flush)
         }
@@ -218,6 +247,17 @@ final class CaptureCoordinator {
     }
 
     private func flushTypePending() {
+        let held = compositionHold.flushPending(fieldValue: currentHoldFieldValue())
+        if !held.isEmpty {
+            let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "Unknown"
+            let now = Date()
+            for piece in held {
+                let flushes = typeBuffer.ingest(appName: app, insertion: piece, at: now)
+                for flush in flushes {
+                    writeTypeFlush(flush)
+                }
+            }
+        }
         if let flush = typeBuffer.flushPending() {
             writeAll(copyPasteMerger.noteInterruptingActivity(at: flush.date))
             writeTypeFlush(flush)

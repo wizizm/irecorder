@@ -13,21 +13,20 @@ import Testing
     #expect(flushed?.appName == "Notes")
 }
 
-@Test func enterFlushesImmediately() {
+@Test func enterDoesNotFlush() {
+    // Enter is used for IME candidate confirm while mixing Chinese/English — only idle flushes.
     let buffer = TypeLineBuffer(idleInterval: 10)
     let t0 = Date(timeIntervalSince1970: 2_000)
     #expect(buffer.ingest(appName: "X", insertion: "hello", at: t0).isEmpty)
-    let flushed = buffer.noteEnter(at: t0.addingTimeInterval(0.1))
-    #expect(flushed?.payload == "hello")
+    #expect(buffer.noteEnter(at: t0.addingTimeInterval(0.1)) == nil)
+    #expect(buffer.tick(at: t0.addingTimeInterval(10.1))?.payload == "hello")
 }
 
-@Test func newlineInInsertionFlushes() {
+@Test func newlineInInsertionDoesNotFlush() {
     let buffer = TypeLineBuffer(idleInterval: 10)
     let t0 = Date(timeIntervalSince1970: 3_000)
-    let first = buffer.ingest(appName: "X", insertion: "line1\nline2", at: t0)
-    #expect(first.map(\.payload) == ["line1"])
-    let second = buffer.tick(at: t0.addingTimeInterval(11))
-    #expect(second?.payload == "line2")
+    #expect(buffer.ingest(appName: "X", insertion: "line1\nline2", at: t0).isEmpty)
+    #expect(buffer.tick(at: t0.addingTimeInterval(11))?.payload == "line1\nline2")
 }
 
 @Test func appSwitchFlushesPending() {

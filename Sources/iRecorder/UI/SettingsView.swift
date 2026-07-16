@@ -56,7 +56,7 @@ struct SettingsView: View {
                             .frame(minWidth: 40, alignment: .leading)
                     }
                 }
-                Text("无键盘输入达上述秒数后写一行；按 Enter 立即换行")
+                Text("无键盘输入达上述秒数后写一行（Enter 不换行，避免中文上屏误分）")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -109,9 +109,10 @@ struct SettingsView: View {
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(appState.accessibilityTrusted ? "辅助功能：已授权" : "辅助功能：未生效")
+                    Text(appState.accessibilityTrusted ? "辅助功能：已授权" : "辅助功能：未生效（打字无法记录）")
+                        .foregroundStyle(appState.accessibilityTrusted ? Color.primary : Color.red)
                     if !appState.accessibilityTrusted {
-                        Text("系统里勾选后，须退出并重新打开本 App 才会变成已授权")
+                        Text("请勾选「/Applications/iRecorder.app」，不要选 .build 里的旧进程。勾选后必须点「退出并重开」。复制不依赖此权限，所以复制仍可能正常。")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)

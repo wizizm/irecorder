@@ -1,6 +1,7 @@
 import Foundation
 
-/// Accumulates typed insertions into one log line until idle timeout or Enter/newline.
+/// Accumulates typed insertions into one log line until idle timeout (or app switch).
+/// Enter / embedded newlines do **not** flush — Enter is commonly used to confirm IME candidates.
 public final class TypeLineBuffer: @unchecked Sendable {
     public struct Flush: Equatable, Sendable {
         public let appName: String
@@ -25,7 +26,7 @@ public final class TypeLineBuffer: @unchecked Sendable {
         self.idleInterval = max(0.5, idleInterval)
     }
 
-    /// Append insertion text. Newlines flush the pending line immediately.
+    /// Append insertion text. Newlines are kept in the buffer; only idle / app-switch flushes.
     @discardableResult
     public func ingest(appName: String, insertion: String, at now: Date = Date()) -> [Flush] {
         lock.lock()
@@ -36,33 +37,16 @@ public final class TypeLineBuffer: @unchecked Sendable {
         }
         self.appName = appName
 
-        var piece = ""
-        for ch in insertion {
-            if ch == "\n" || ch == "\r" {
-                if !piece.isEmpty {
-                    buffer += piece
-                    lastInputAt = now
-                    piece = ""
-                }
-                if !buffer.isEmpty {
-                    out.append(takeFlushLocked(at: now))
-                }
-                continue
-            }
-            piece.append(ch)
-        }
-        if !piece.isEmpty {
-            buffer += piece
-            lastInputAt = now
-        }
+        guard !insertion.isEmpty else { return out }
+        buffer += insertion
+        lastInputAt = now
         return out
     }
 
+    /// Kept for callers; Enter no longer ends a type line (IME confirm uses Enter).
     public func noteEnter(at now: Date = Date()) -> Flush? {
-        lock.lock()
-        defer { lock.unlock() }
-        guard !buffer.isEmpty else { return nil }
-        return takeFlushLocked(at: now)
+        _ = now
+        return nil
     }
 
     public func tick(at now: Date = Date()) -> Flush? {

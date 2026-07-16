@@ -12,9 +12,9 @@ macOS menu bar utility that logs **committed on-screen text** (including CJK aft
 
 ## Features
 
-- **Typing** — Accessibility value diffs for committed text; under Chinese IME, skips pinyin composition and keeps confirmed characters only
+- **Typing** — AX value diffs when available. Under Chinese IME, Latin is held briefly: kept if it remains in the field (English), dropped if IME replaces it (pinyin). **Cursor**/Electron falls back to key characters (no field check; apostrophe-marked composition is dropped).
 - **Copy / paste** — Watches the pasteboard and global ⌘V; a copy followed quickly by the same paste merges into `copy_paste`
-- **Line buffering** — Flush after N seconds idle (default 3, configurable), or immediately on Enter
+- **Line buffering** — Flush after N seconds idle (default 3, configurable). Enter does not start a new log line (IME confirm often uses Enter).
 - **Menu bar** — Pause / resume, open today’s log, settings (directory, retention, truncation, launch at login)
 - **Privacy-friendly** — Data stays on disk; typing in password / secure fields is not recorded
 
@@ -91,7 +91,7 @@ One file per day: `YYYY-MM-DD.log`
 
 ## Limitations
 
-- Highly custom-drawn UIs, games, and some Electron / custom controls may not expose text via Accessibility
+- Some custom-drawn UIs / games still cannot be typed-captured; Cursor uses the key-character fallback (may include brief IME pinyin noise)
 - Typing in password / Secure fields is skipped; if text is already on the clipboard, copy / paste may still be logged
 - Ad-hoc signature is not notarized; Gatekeeper may warn — grant Accessibility manually
 
