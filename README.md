@@ -2,6 +2,8 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
+macOS (this repo) | [Windows](https://github.com/wizizm/irecorder-for-windows)
+
 macOS menu bar utility that logs **committed on-screen text** (including CJK after IME confirm — not keycodes), **clipboard copy**, and **⌘V paste**. Writes daily local UTF-8 `.log` files. Nothing is uploaded.
 
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)
@@ -70,7 +72,7 @@ One file per day: `YYYY-MM-DD.log`
 | Time | ISO 8601 |
 | Kind | `type` / `copy` / `paste` / `copy_paste` |
 | App | Frontmost app; cross-app paste looks like `A→B` |
-| Payload | Original text; newline / tab / `\` escaped as `\n` / `\t` / `\\` |
+| Payload | Original text. `type` escapes newline / tab / `\` as `\n` / `\t` / `\\` (one physical line). `copy` / `paste` / `copy_paste` keep real newlines and tabs so you can copy the payload out with original formatting (a record may span multiple lines). |
 
 - Copy / paste beyond the configured size is truncated with ` [truncated]` (default 100 KB; `0` = no truncate). **Typing is never truncated.**
 - The app’s own log content is not re-captured (avoids escape blow-up when a log is open in Console)

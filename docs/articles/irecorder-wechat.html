@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iRecorder · 微信公众号文稿</title>
+  <!--
+    用法：
+    1. 用浏览器打开本文件
+    2. 全选下方「正文区域」内容 → 复制
+    3. 粘贴到微信公众号后台「图文消息」编辑器
+
+    也可用 Markdown Nice / 135编辑器等工具导入同目录 .md 文件后导出。
+  -->
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #f0f2f5;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+        "Microsoft YaHei", sans-serif;
+    }
+    .hint {
+      max-width: 680px;
+      margin: 0 auto 16px;
+      padding: 12px 16px;
+      background: #fff8e6;
+      border: 1px solid #ffe0a3;
+      border-radius: 8px;
+      color: #7a5b00;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .stage {
+      max-width: 677px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 20px 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+  </style>
+</head>
+<body>
+  <div class="hint">
+    <strong>复制说明：</strong>选中下方白框内正文（从标题到署名）→ ⌘C → 粘贴到公众号编辑器。
+    封面建议用 App 橙色 iR 图标；正文中的代码块若样式丢失，可改成引用样式。
+  </div>
+
+  <!-- ========== 从这里开始全选复制到公众号 ========== -->
+  <div id="wechat-article" class="stage">
+
+    <section style="margin:0;padding:0;box-sizing:border-box;">
+      <h1 style="margin:0 0 12px;padding:0;font-size:22px;font-weight:700;line-height:1.4;color:#1a1a1a;text-align:center;">
+        我做了个 macOS 小工具：默默记下你打过、复制过的字
+      </h1>
+      <p style="margin:0 0 24px;padding:0;font-size:14px;line-height:1.7;color:#888888;text-align:center;">
+        iRecorder · 开源 · 本地存储 · 支持中文输入法
+      </p>
+    </section>
+
+    <section style="margin:0 0 20px;padding:0;box-sizing:border-box;">
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        你有没有过这种瞬间——
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        早上在浏览器搜了一串关键词，下午想复用，却怎么也想不起来；
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        聊天里打了一大段话，发出去前改乱了，想找回上一版；
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        从网页复制了一段配置，粘到终端后发现粘错了，却不记得原文是什么。
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        Mac 很擅长「此刻干活」，不太擅长「过会儿回忆」。
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        于是我做了 <strong style="color:#e85d04;">iRecorder</strong>：一个安静待在菜单栏的小工具，只做一件事——
+      </p>
+      <p style="margin:0 0 14px;padding:12px 16px;font-size:16px;line-height:1.85;color:#444444;background:#fff5ef;border-left:4px solid #e85d04;text-align:justify;">
+        把你在各 App 里<strong>已经打上屏的文字</strong>、<strong>复制</strong>、以及 <strong>⌘V 粘贴</strong>，按天写进本机的日志文件。
+      </p>
+      <p style="margin:0 0 8px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        不截屏、不上云、不弹广告。打开就能用，关掉也干净。
+      </p>
+    </section>
+
+    <section style="margin:28px 0 20px;padding:0;box-sizing:border-box;">
+      <h2 style="margin:0 0 16px;padding:0 0 8px;font-size:18px;font-weight:700;line-height:1.4;color:#1a1a1a;border-bottom:2px solid #e85d04;">
+        01 · 记的是「结果」，不是按键乱码
+      </h2>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        很多键鼠记录软件记的是 KeyCode。中文输入时，你会看到一长串拼音和功能键，真正有用的汉字反而埋在里面。
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        iRecorder 走另一条路：通过系统的<strong>辅助功能</strong>，读已经出现在输入框里的文本差分。
+      </p>
+      <p style="margin:0 0 8px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        · 英文：你敲什么，它大致记什么<br />
+        · 中文：组字过程中的拼音会尽量忽略，<strong>只保留确认上屏后的汉字</strong><br />
+        · 停一会儿（默认约 3 秒）或按 Enter，就落成日志里的一行
+      </p>
+      <p style="margin:14px 0;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        复制、粘贴也会记。如果你刚复制完就粘贴同一段，会合并成一行 <code style="font-size:14px;padding:1px 6px;background:#f5f5f5;border-radius:3px;color:#c2410c;">copy_paste</code>，少一点噪音。
+      </p>
+      <p style="margin:0 0 8px;padding:0;font-size:15px;line-height:1.7;color:#666666;">
+        日志长这样（示意）：
+      </p>
+      <p style="margin:0 0 8px;padding:12px 14px;font-size:12px;line-height:1.7;color:#3d3d3d;background:#f7f7f7;border-radius:6px;font-family:Menlo,Monaco,Consolas,monospace;word-break:break-all;overflow-wrap:anywhere;">
+        2026-07-15T16:12:03+08:00&nbsp;&nbsp;type&nbsp;&nbsp;Safari&nbsp;&nbsp;你好世界<br />
+        2026-07-15T16:12:10+08:00&nbsp;&nbsp;copy_paste&nbsp;&nbsp;Finder→Notes&nbsp;&nbsp;一段配置文本<br />
+        2026-07-15T16:12:20+08:00&nbsp;&nbsp;copy&nbsp;&nbsp;Safari&nbsp;&nbsp;only copied
+      </p>
+      <p style="margin:14px 0 0;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        一天一个文件，默认在 <code style="font-size:14px;padding:1px 6px;background:#f5f5f5;border-radius:3px;">~/Documents/iRecorder/</code>，用记事本、VS Code、甚至 grep 都能查。
+      </p>
+    </section>
+
+    <section style="margin:28px 0 20px;padding:0;box-sizing:border-box;">
+      <h2 style="margin:0 0 16px;padding:0 0 8px;font-size:18px;font-weight:700;line-height:1.4;color:#1a1a1a;border-bottom:2px solid #e85d04;">
+        02 · 适合谁用？
+      </h2>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        <strong>程序员 / 写作者</strong><br />
+        回看今天改过哪些句子、搜过哪些报错、从文档里搬过哪些片段。
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        <strong>产品 / 运营</strong><br />
+        聊天、问卷、飞书里敲过的描述，不用再翻消息记录考古。
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        <strong>轻度强迫症患者</strong><br />
+        不是要监控别人，只是想给「自己今天输入过什么」留一份可检索的底稿。
+      </p>
+      <p style="margin:0 0 8px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        如果你需要的是企业级审计、远程监控，它不是那个方向——它更像一本<strong>只写给自己的本地输入日记</strong>。
+      </p>
+    </section>
+
+    <section style="margin:28px 0 20px;padding:0;box-sizing:border-box;">
+      <h2 style="margin:0 0 16px;padding:0 0 8px;font-size:18px;font-weight:700;line-height:1.4;color:#1a1a1a;border-bottom:2px solid #e85d04;">
+        03 · 隐私：数据不出你的电脑
+      </h2>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        · 日志只写在你指定的本地目录<br />
+        · <strong>不收集、不上传</strong><br />
+        · 密码框 / 安全输入框里的打字<strong>不会记</strong><br />
+        · 需要你手动授予 macOS「辅助功能」权限——否则读不到别的 App 里的文字
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        权限看起来吓人，但对这类工具几乎是必选项。你可以随时在菜单里暂停记录，也可以卸载并删掉整个日志文件夹。
+      </p>
+      <p style="margin:0 0 8px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        另外：高度自绘的界面、游戏、部分 Electron 控件，系统本身就不一定暴露文字，记不全是正常的。
+      </p>
+    </section>
+
+    <section style="margin:28px 0 20px;padding:0;box-sizing:border-box;">
+      <h2 style="margin:0 0 16px;padding:0 0 8px;font-size:18px;font-weight:700;line-height:1.4;color:#1a1a1a;border-bottom:2px solid #e85d04;">
+        04 · 怎么装？
+      </h2>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        项目已开源（MIT），需要 <strong>macOS 14+</strong>，本机有 Swift 工具链。
+      </p>
+      <p style="margin:0 0 10px;padding:12px 16px;font-size:15px;line-height:1.8;color:#ffffff;background:#e85d04;border-radius:6px;text-align:center;">
+        仓库地址<br />
+        <strong style="font-size:16px;word-break:break-all;">https://github.com/wizizm/irecorder</strong>
+      </p>
+      <p style="margin:16px 0 8px;padding:0;font-size:15px;line-height:1.7;color:#666666;">
+        终端里三步：
+      </p>
+      <p style="margin:0 0 14px;padding:12px 14px;font-size:13px;line-height:1.75;color:#3d3d3d;background:#f7f7f7;border-radius:6px;font-family:Menlo,Monaco,Consolas,monospace;word-break:break-all;">
+        git clone https://github.com/wizizm/irecorder.git<br />
+        cd irecorder<br />
+        ./scripts/package-app.sh
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        脚本会编译、打成 App，并装到「应用程序」。第一次打开后：
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        1. 点菜单栏橙色 <strong style="color:#e85d04;">iR</strong> 图标<br />
+        2. 去系统设置勾选辅助功能里的 iRecorder<br />
+        3. <strong>退出 App 再打开一次</strong>（macOS 勾完权限，经常要重启进程才生效）
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        看到当日 log 里出现 <code style="font-size:14px;padding:1px 6px;background:#f5f5f5;border-radius:3px;">session_started</code>，就说明它在干活了。
+      </p>
+      <p style="margin:0 0 8px;padding:12px 16px;font-size:14px;line-height:1.75;color:#666666;background:#fafafa;border-radius:6px;text-align:justify;">
+        说明：目前是 ad-hoc 签名，没有走苹果公证。重新安装后，有时要在辅助功能里再勾一下——这是未上架 Mac App Store 的常见取舍。
+      </p>
+    </section>
+
+    <section style="margin:28px 0 20px;padding:0;box-sizing:border-box;">
+      <h2 style="margin:0 0 16px;padding:0 0 8px;font-size:18px;font-weight:700;line-height:1.4;color:#1a1a1a;border-bottom:2px solid #e85d04;">
+        05 · 写在最后
+      </h2>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        iRecorder 很小：没有复杂账号体系，没有看板，没有「AI 总结今天你很努力」。
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        它只是把那些本来会散落在记忆和各个窗口里的字，收成一份按日期排列的文本。
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        当你某天突然问自己：「早上那串命令到底是什么？」——也许翻一下今天的 <code style="font-size:14px;padding:1px 6px;background:#f5f5f5;border-radius:3px;">.log</code>，答案就在那里。
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        项目地址：<br />
+        <strong style="color:#e85d04;word-break:break-all;">https://github.com/wizizm/irecorder</strong>
+      </p>
+      <p style="margin:0 0 14px;padding:0;font-size:16px;line-height:1.85;color:#333333;text-align:justify;">
+        欢迎 Star、提 Issue，也欢迎直接改了发 PR。<br />
+        如果这篇文章对你有用，顺手转给身边用 Mac 的朋友就好。
+      </p>
+      <p style="margin:24px 0 0;padding:0;font-size:15px;line-height:1.7;color:#888888;text-align:right;">
+        —— wizizm
+      </p>
+    </section>
+
+  </div>
+  <!-- ========== 复制到这里结束 ========== -->
+
+</body>
+</html>

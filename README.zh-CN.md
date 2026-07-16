@@ -2,6 +2,8 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
+macOS（本仓库）| [Windows](https://github.com/wizizm/irecorder-for-windows)
+
 macOS 菜单栏小工具：在本机记录你在各 App 里**已上屏的文字**（含中文输入法确认后的汉字，不是按键码）、**复制**，以及 **⌘V 粘贴**。按天写入本地 UTF-8 `.log`，不上传网络。
 
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)
@@ -70,7 +72,7 @@ IRECORDER_SKIP_INSTALL=1 ./scripts/package-app.sh
 | 时间 | ISO 8601 |
 | 类型 | `type` / `copy` / `paste` / `copy_paste` |
 | App | 前台应用名；跨 App 粘贴时形如 `A→B` |
-| 正文 | 原文；换行 / 制表符 / `\` 转义为 `\n` / `\t` / `\\` |
+| 正文 | 原文。`type` 会把换行 / 制表符 / `\` 转义为 `\n` / `\t` / `\\`（物理上一行）。`copy` / `paste` / `copy_paste` **保留真实换行与制表符**，方便按原格式复制出来（一条记录可能跨多行）。 |
 
 - 复制 / 粘贴超过设置长度会截断并附加 ` [truncated]`（默认 100 KB，`0` = 不截断）；**打字不截断**
 - 不会把「自己的 log 内容」再记一遍（避免在控制台打开 log 时转义膨胀）
