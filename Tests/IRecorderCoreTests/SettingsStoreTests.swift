@@ -12,6 +12,7 @@ import Testing
     #expect(store.isRecording == true)
     #expect(store.clipboardTruncateMaxBytes == 100_000)
     #expect(store.typeLineIdleSeconds == 3)
+    #expect(store.openTodayLogHotKey == HotKeySpec.defaultOpenTodayLog)
     #expect(store.logDirectoryURL.path.hasSuffix("Documents/iRecorder"))
 }
 
@@ -25,6 +26,14 @@ import Testing
     store.launchAtLogin = false
     store.clipboardTruncateMaxBytes = 8_000
     store.typeLineIdleSeconds = 5
+    store.openTodayLogHotKey = HotKeySpec(
+        keyCode: 31,
+        command: true,
+        shift: false,
+        option: true,
+        control: false,
+        isEnabled: false
+    )
     let custom = URL(fileURLWithPath: "/tmp/irecorder-test-logs")
     store.logDirectoryURL = custom
 
@@ -34,5 +43,31 @@ import Testing
     #expect(again.launchAtLogin == false)
     #expect(again.clipboardTruncateMaxBytes == 8_000)
     #expect(again.typeLineIdleSeconds == 5)
+    #expect(again.openTodayLogHotKey == HotKeySpec(
+        keyCode: 31,
+        command: true,
+        shift: false,
+        option: true,
+        control: false,
+        isEnabled: false
+    ))
     #expect(again.logDirectoryURL == custom)
+}
+
+@Test func openTodayLogHotKeyCorruptDataFallsBackToDefault() {
+    let suite = "test.irecorder.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    defaults.set(Data("not-json".utf8), forKey: "openTodayLogHotKey")
+    let store = SettingsStore(defaults: defaults)
+    #expect(store.openTodayLogHotKey == HotKeySpec.defaultOpenTodayLog)
+}
+
+@Test func openTodayLogHotKeyWrongTypeFallsBackToDefault() {
+    let suite = "test.irecorder.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    defaults.set("⌘⇧L", forKey: "openTodayLogHotKey")
+    let store = SettingsStore(defaults: defaults)
+    #expect(store.openTodayLogHotKey == HotKeySpec.defaultOpenTodayLog)
 }

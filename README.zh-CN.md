@@ -87,6 +87,7 @@ IRECORDER_SKIP_INSTALL=1 ./scripts/package-app.sh
 | 复制/粘贴截断 | KB；`0` = 不截断 |
 | 打字换行等待 | 1–60 秒 |
 | 登录时启动 | 需安装为 `.app`（放入 Applications 后更可靠） |
+| 打开今日日志快捷键 | 全局快捷键（默认 ⇧⌘L）；需辅助功能权限 |
 
 ## 限制
 

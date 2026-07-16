@@ -1,9 +1,12 @@
+import AppKit
+import IRecorderCore
 import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var appState: AppState
     @State private var retentionText = ""
     @State private var truncateKBText = ""
+    @State private var isRecordingHotKey = false
 
     private let labelWidth: CGFloat = 120
 
@@ -59,6 +62,47 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    Text("打开今日日志")
+                        .frame(width: labelWidth, alignment: .leading)
+                    Toggle("", isOn: Binding(
+                        get: { appState.openTodayLogHotKey.isEnabled },
+                        set: { enabled in
+                            var key = appState.openTodayLogHotKey
+                            key.isEnabled = enabled
+                            appState.updateOpenTodayLogHotKey(key)
+                        }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.checkbox)
+                    Button(isRecordingHotKey ? "按下快捷键…" : appState.openTodayLogHotKey.displayString) {
+                        if isRecordingHotKey {
+                            isRecordingHotKey = false
+                            appState.setHotKeyRecordingSuspended(false)
+                        } else {
+                            beginHotKeyCapture()
+                        }
+                    }
+                    .frame(minWidth: 88)
+                    Button("恢复默认") {
+                        isRecordingHotKey = false
+                        appState.setHotKeyRecordingSuspended(false)
+                        appState.updateOpenTodayLogHotKey(.defaultOpenTodayLog)
+                    }
+                }
+                Text("全局快捷键打开今日日志（需辅助功能权限）；默认 ⇧⌘L")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .onExitCommand {
+                if isRecordingHotKey {
+                    isRecordingHotKey = false
+                    appState.setHotKeyRecordingSuspended(false)
+                }
+            }
+
             Divider().padding(.vertical, 4)
 
             groupTitle("权限与启动")
@@ -88,7 +132,12 @@ struct SettingsView: View {
             ))
         }
         .padding(20)
-        .frame(width: 400, height: 520)
+        .frame(width: 400, height: 560)
+        .background(HotKeyCaptureView(isActive: $isRecordingHotKey) { spec in
+            appState.updateOpenTodayLogHotKey(spec)
+            appState.setHotKeyRecordingSuspended(false)
+            isRecordingHotKey = false
+        })
         .onAppear {
             retentionText = String(appState.retentionDays)
             truncateKBText = String(appState.clipboardTruncateMaxKB)
@@ -100,7 +149,17 @@ struct SettingsView: View {
         .onDisappear {
             commitRetention()
             commitTruncate()
+            isRecordingHotKey = false
+            appState.setHotKeyRecordingSuspended(false)
         }
+        .onChange(of: isRecordingHotKey) { _, recording in
+            appState.setHotKeyRecordingSuspended(recording)
+        }
+    }
+
+    private func beginHotKeyCapture() {
+        isRecordingHotKey = true
+        appState.setHotKeyRecordingSuspended(true)
     }
 
     private func groupTitle(_ title: String) -> some View {

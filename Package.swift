@@ -13,7 +13,10 @@ let package = Package(
         .executableTarget(
             name: "iRecorder",
             dependencies: ["IRecorderCore"],
-            exclude: ["Info.plist"]
+            exclude: ["Info.plist"],
+            linkerSettings: [
+                .linkedFramework("Carbon"),
+            ]
         ),
         .testTarget(name: "IRecorderCoreTests", dependencies: ["IRecorderCore"]),
     ]

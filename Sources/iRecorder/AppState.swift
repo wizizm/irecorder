@@ -18,6 +18,9 @@ final class AppState: ObservableObject {
     /// Display unit: kilobytes (1000 bytes). 0 = unlimited.
     @Published var clipboardTruncateMaxKB: Int
     @Published var typeLineIdleSeconds: Int
+    @Published var openTodayLogHotKey: HotKeySpec
+
+    private let hotKeyMonitor: HotKeyMonitor
 
     init(settings: SettingsStore = SettingsStore()) {
         self.settings = settings
@@ -29,12 +32,24 @@ final class AppState: ObservableObject {
         self.logDirectoryPath = settings.logDirectoryURL.path
         self.clipboardTruncateMaxKB = settings.clipboardTruncateMaxBytes / 1000
         self.typeLineIdleSeconds = settings.typeLineIdleSeconds
+        self.openTodayLogHotKey = settings.openTodayLogHotKey
+        self.hotKeyMonitor = HotKeyMonitor(spec: settings.openTodayLogHotKey)
+        self.hotKeyMonitor.onTrigger = { [weak self] in
+            self?.openTodayLog()
+        }
     }
 
     func start() {
         applyLoginItem(settings.launchAtLogin)
         coordinator.start()
+        hotKeyMonitor.update(spec: openTodayLogHotKey)
+        hotKeyMonitor.start()
         refreshAccessibility()
+    }
+
+    func stop() {
+        hotKeyMonitor.stop()
+        coordinator.stop()
     }
 
     /// Start capture without popping permission UI (re-check status quietly).
@@ -81,33 +96,50 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// Bring an already-created Settings window above other apps (safe if not open yet).
+    /// Bring Settings forward and keep its frame on the visible screen (menu-bar apps often restore off-screen).
     func bringSettingsWindowForward() {
         NSApp.activate(ignoringOtherApps: true)
         let raise: () -> Void = { [weak self] in
             self?.raiseSettingsWindows()
         }
-        DispatchQueue.main.async(execute: raise)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: raise)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: raise)
+        // openSettings() creates the window asynchronously — retry a few times.
+        for delay in [0.0, 0.05, 0.12, 0.25, 0.45] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: raise)
+        }
     }
 
     private func raiseSettingsWindows() {
         NSApp.activate(ignoringOtherApps: true)
-        let settingsWindows = NSApp.windows.filter { window in
-            let id = window.identifier?.rawValue ?? ""
-            let title = window.title
-            let className = String(describing: type(of: window))
-            return id.localizedCaseInsensitiveContains("settings")
-                || title.contains("设置")
-                || title.localizedCaseInsensitiveContains("settings")
-                || className.localizedCaseInsensitiveContains("settings")
-        }
+        let settingsWindows = NSApp.windows.filter { Self.isSettingsWindow($0) }
         for window in settingsWindows {
             window.deminiaturize(nil)
             window.collectionBehavior.insert(.moveToActiveSpace)
+            Self.placeSettingsWindowOnScreen(window)
             window.makeKeyAndOrderFront(nil)
             window.orderFrontRegardless()
+        }
+    }
+
+    private static func isSettingsWindow(_ window: NSWindow) -> Bool {
+        let id = window.identifier?.rawValue ?? ""
+        let title = window.title
+        let className = String(describing: type(of: window))
+        return id.localizedCaseInsensitiveContains("settings")
+            || title.contains("设置")
+            || title.localizedCaseInsensitiveContains("settings")
+            || className.localizedCaseInsensitiveContains("settings")
+    }
+
+    private static func placeSettingsWindowOnScreen(_ window: NSWindow) {
+        let screen = window.screen ?? NSScreen.main ?? NSScreen.screens.first
+        guard let screen else {
+            window.center()
+            return
+        }
+        let visible = screen.visibleFrame
+        let fixed = WindowFrameClamp.ensureVisible(frame: window.frame, screenVisible: visible)
+        if fixed.origin != window.frame.origin {
+            window.setFrame(fixed, display: true)
         }
     }
 
@@ -159,6 +191,17 @@ final class AppState: ObservableObject {
         typeLineIdleSeconds = max(1, seconds)
         settings.typeLineIdleSeconds = typeLineIdleSeconds
         coordinator.syncIdleInterval()
+    }
+
+    func updateOpenTodayLogHotKey(_ hotKey: HotKeySpec) {
+        openTodayLogHotKey = hotKey
+        settings.openTodayLogHotKey = hotKey
+        hotKeyMonitor.update(spec: hotKey)
+        hotKeyMonitor.start()
+    }
+
+    func setHotKeyRecordingSuspended(_ suspended: Bool) {
+        hotKeyMonitor.isSuspended = suspended
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {

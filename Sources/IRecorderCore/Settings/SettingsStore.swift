@@ -10,6 +10,7 @@ public final class SettingsStore: @unchecked Sendable {
         static let isRecording = "isRecording"
         static let clipboardTruncateMaxBytes = "clipboardTruncateMaxBytes"
         static let typeLineIdleSeconds = "typeLineIdleSeconds"
+        static let openTodayLogHotKey = "openTodayLogHotKey"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -70,6 +71,23 @@ public final class SettingsStore: @unchecked Sendable {
             return max(1, defaults.integer(forKey: Key.typeLineIdleSeconds))
         }
         set { defaults.set(max(1, newValue), forKey: Key.typeLineIdleSeconds) }
+    }
+
+    /// Global shortcut to open today's log file. Default ⇧⌘L.
+    public var openTodayLogHotKey: HotKeySpec {
+        get {
+            guard let data = defaults.data(forKey: Key.openTodayLogHotKey),
+                  let decoded = try? JSONDecoder().decode(HotKeySpec.self, from: data)
+            else {
+                return .defaultOpenTodayLog
+            }
+            return decoded
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                defaults.set(data, forKey: Key.openTodayLogHotKey)
+            }
+        }
     }
 
     public static var defaultLogDirectory: URL {

@@ -87,6 +87,7 @@ One file per day: `YYYY-MM-DD.log`
 | Copy / paste truncate | KB; `0` = unlimited |
 | Type-line idle | 1–60 seconds |
 | Launch at login | Needs a real `.app` (more reliable under Applications) |
+| Open today’s log hotkey | Global shortcut (default ⇧⌘L); requires Accessibility |
 
 ## Limitations
 

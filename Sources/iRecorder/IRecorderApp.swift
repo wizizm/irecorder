@@ -20,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        appState.coordinator.stop()
+        appState.stop()
     }
 
     func bootstrapCapture() {
@@ -49,7 +49,7 @@ struct IRecorderApp: App {
 
         Settings {
             SettingsView(appState: appDelegate.appState)
-                .frame(width: 400, height: 520)
+                .frame(width: 400, height: 560)
         }
     }
 }
