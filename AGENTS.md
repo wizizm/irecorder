@@ -4,8 +4,8 @@
 - Session/chat logs belong in `~/.claude/chatlog`, not the project `chatdoc/` directory.
 - Copyright / GitHub owner attribution uses `wizizm`.
 - Settings numerics (retention days, truncation length, type idle flush seconds) should be plain number text fields, not steppers.
-- Type logging: under Chinese IME, hold Latin and resolve via AX field presence — longest held prefix still in field → English; rest (pinyin replaced by CJK) dropped. Idle flush only (Enter does not flush — IME confirm).
-- Cursor is a primary daily typing target; when AXValue is unavailable, key-insertion fallback is required (do not treat Cursor as AX-only).
+- Type logging (Branch A / native): under Chinese IME, hold Latin and resolve via **Latin-token** field presence (not raw `contains`) — exact token or promote partial hold (`te`→`test`); pinyin scraps (`h` inside `zhong`) dropped. Do **not** idle-flush held Latin while Chinese IME is active (Enter does not flush either — IME confirm).
+- Cursor / VS Code–based IDEs (Branch B): Monaco `AXTextArea` with newline-only / ZWSP IME scraps is unreliable (`ElectronEditorAXPolicy`) **only when** `VSCodeBasedIDEPolicy` matches — never apply that gate to Finder/Notes/企微. Under Chinese IME there, key-fallback is fully off; chat Chinese is captured only after send via `CursorChatAXProbe` (Enter / ⌘Enter), with spaced AX-noise filtered out.
 - Copy followed immediately by paste of the same text should merge into one log event; intervening typed text keeps copy and paste as separate lines.
 - Prefer preserving original copy/paste formatting (including newlines) so content can be re-copied from the log without flattening.
 - Settings window should open normally when closed, and if already open but obscured, bring it to the front; if mostly off-screen or stuck at the bottom, recenter/clamp on screen; keep the pane compact (avoid excessive width and scrollbars).

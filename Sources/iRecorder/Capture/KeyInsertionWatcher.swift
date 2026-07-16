@@ -3,10 +3,12 @@ import Foundation
 import IRecorderCore
 
 /// Fallback typing capture for apps (Cursor / Electron) that do not expose AXValue.
-/// Uses keyDown `characters` (IME commit yields CJK; English yields letters).
-/// Skipped when the focused element already has a readable AX string value.
+/// Latin under Chinese IME is ignored (pinyin noise). Cursor chat Chinese is captured
+/// after send via `CursorChatAXProbe` (message bubbles in the AX tree).
 final class KeyInsertionWatcher {
     var onEvent: ((CaptureEvent) -> Void)?
+    /// Fired on plain Return while key-fallback is active (Cursor chat send).
+    var onPlainReturn: (() -> Void)?
 
     /// Shared focus snapshot from `AXWatcher` (updated on its poll).
     weak var focus: AXFocusCoverage?
@@ -34,21 +36,45 @@ final class KeyInsertionWatcher {
         if focus?.focusedExposesStringValue == true { return }
 
         let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
-        guard let text = KeyInsertionPolicy.insertion(
+        let keyCode = UInt16(event.keyCode)
+        if KeyInsertionPolicy.isPlainReturn(
+            keyCode: keyCode,
+            command: flags.contains(.command),
+            option: flags.contains(.option),
+            control: flags.contains(.control),
+            shift: flags.contains(.shift)
+        ) || KeyInsertionPolicy.isCommandReturn(
+            keyCode: keyCode,
+            command: flags.contains(.command),
+            option: flags.contains(.option),
+            control: flags.contains(.control)
+        ) {
+            onPlainReturn?()
+            return
+        }
+
+        guard let raw = KeyInsertionPolicy.insertion(
             characters: event.characters,
             command: flags.contains(.command),
             option: flags.contains(.option),
             control: flags.contains(.control),
-            keyCode: UInt16(event.keyCode)
+            keyCode: keyCode
         ) else { return }
 
+        let text = KeyInsertionPolicy.sanitizeKeyInsertion(raw)
         let ime = InputSourceProbe.isChineseIMEActive()
+        let front = NSWorkspace.shared.frontmostApplication
+        let vscodeBased = VSCodeBasedIDEPolicy.matches(
+            appName: front?.localizedName ?? "",
+            bundleID: front?.bundleIdentifier
+        )
         guard KeyInsertionPolicy.shouldAcceptForKeyFallback(
             insertion: text,
-            chineseIMEActive: ime
+            chineseIMEActive: ime,
+            vscodeBasedIDE: vscodeBased
         ) else { return }
 
-        let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "Unknown"
+        let app = front?.localizedName ?? "Unknown"
         onEvent?(CaptureEvent(kind: .type, appName: app, payload: text))
     }
 }

@@ -7,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var didBootstrap = false
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        if CommandLine.arguments.contains("--ax-dump") {
+            AXFocusDumper.runAndExit()
+        }
         bootstrapCapture()
     }
 

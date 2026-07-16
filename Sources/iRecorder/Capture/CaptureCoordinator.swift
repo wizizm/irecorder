@@ -7,6 +7,7 @@ final class CaptureCoordinator {
     private let settings: SettingsStore
     private let ax = AXWatcher()
     private let keyInsertion = KeyInsertionWatcher()
+    private let cursorChat = CursorChatAXProbe()
     private let clipboard = ClipboardWatcher()
     private let paste = PasteDetector()
     private let typeSuppressor = InsertionSuppressor()
@@ -49,10 +50,24 @@ final class CaptureCoordinator {
         wire(ax)
         keyInsertion.focus = ax.focusCoverage
         keyInsertion.onEvent = { [weak self] event in self?.handle(event) }
+        keyInsertion.onPlainReturn = { [weak self] in
+            guard let self, self.settings.isRecording else { return }
+            self.cursorChat.notePlainReturn(
+                chineseIMEActive: InputSourceProbe.isChineseIMEActive()
+            )
+        }
+        cursorChat.onEvent = { [weak self] event in
+            guard let self else { return }
+            // Bubble text replaces any key-fallback scraps for this send.
+            self.compositionHold.flushPending(fieldValue: nil)
+            self.typeBuffer.discardPending()
+            self.handle(event)
+        }
         wire(clipboard)
         wire(paste)
         ax.start()
         keyInsertion.start()
+        cursorChat.start()
         clipboard.start()
         paste.start()
         startIdlePoller()
@@ -71,6 +86,7 @@ final class CaptureCoordinator {
         writeAll(copyPasteMerger.flushPending())
         ax.stop()
         keyInsertion.stop()
+        cursorChat.stop()
         clipboard.stop()
         paste.stop()
         if let activity {
@@ -110,6 +126,7 @@ final class CaptureCoordinator {
     private func startIdlePoller() {
         idlePoller?.stop()
         let poller = Poller(interval: 0.25) { [weak self] in
+            self?.cursorChat.tickPrimeIfNeeded()
             self?.flushCompositionHoldIfIdle()
             self?.flushTypeIfIdle()
             self?.flushCopyPasteIfExpired()
@@ -200,7 +217,12 @@ final class CaptureCoordinator {
 
     private func flushCompositionHoldIfIdle() {
         guard settings.isRecording else { return }
-        let pieces = compositionHold.tick(at: Date(), fieldValue: currentHoldFieldValue())
+        // Branch A (Finder/native): under Chinese IME, hold until CJK/IME-off — never idle-emit pinyin.
+        let pieces = compositionHold.tick(
+            at: Date(),
+            fieldValue: currentHoldFieldValue(),
+            chineseIMEActive: InputSourceProbe.isChineseIMEActive()
+        )
         guard !pieces.isEmpty else { return }
         let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "Unknown"
         let now = Date()

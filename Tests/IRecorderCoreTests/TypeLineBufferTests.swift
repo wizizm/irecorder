@@ -42,3 +42,12 @@ import Testing
     let buffer = TypeLineBuffer(idleInterval: 2)
     #expect(buffer.noteEnter(at: Date()) == nil)
 }
+
+@Test func discardPendingDropsWithoutFlush() {
+    let buffer = TypeLineBuffer(idleInterval: 10)
+    let t0 = Date(timeIntervalSince1970: 5_000)
+    #expect(buffer.ingest(appName: "Cursor", insertion: "noise", at: t0).isEmpty)
+    buffer.discardPending()
+    #expect(buffer.tick(at: t0.addingTimeInterval(20)) == nil)
+    #expect(buffer.flushPending() == nil)
+}

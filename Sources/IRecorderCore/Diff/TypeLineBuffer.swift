@@ -66,6 +66,14 @@ public final class TypeLineBuffer: @unchecked Sendable {
         return takeFlushLocked(at: now)
     }
 
+    /// Drop buffered text without emitting (e.g. Cursor chat bubble supersedes key noise).
+    public func discardPending() {
+        lock.lock()
+        defer { lock.unlock() }
+        buffer = ""
+        lastInputAt = nil
+    }
+
     private func takeFlushLocked(at now: Date) -> Flush {
         let payload = buffer
         let name = appName.isEmpty ? "Unknown" : appName

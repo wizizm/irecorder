@@ -86,6 +86,29 @@ final class AXWatcher {
             diagnose(role: role, valueLen: -1, sameElement: false, compared: false, inserted: 0)
             return
         }
+
+        let front = NSWorkspace.shared.frontmostApplication
+        let vscodeBased = VSCodeBasedIDEPolicy.matches(
+            appName: front?.localizedName ?? "",
+            bundleID: front?.bundleIdentifier
+        )
+
+        // Branch B (VS Code–based only): Monaco textarea with "\n" / last char / ZWSP is not real text.
+        // Native apps (Finder etc.) always stay on Branch A: AX diffs + field-presence hold.
+        if ElectronEditorAXPolicy.isUnreliableEditorValue(
+            role: role,
+            value: value,
+            vscodeBasedIDE: vscodeBased
+        ) {
+            focusCoverage.focusedExposesStringValue = false
+            latestFieldValue = nil
+            lastElement = element
+            lastValue = value
+            wasSecure = false
+            diagnose(role: role, valueLen: value.count, sameElement: false, compared: false, inserted: 0)
+            return
+        }
+
         // Empty non-editable AXValue must not block the key fallback.
         focusCoverage.focusedExposesStringValue = isEditableRole(role) || !value.isEmpty
 
@@ -100,14 +123,23 @@ final class AXWatcher {
         if shouldCompare,
            let inserted = TextInsertionDiff.insertedText(previous: lastValue, current: value),
            !inserted.isEmpty {
-            insertedCount = inserted.count
-            let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "Unknown"
-            onEvent?(CaptureEvent(
-                kind: .type,
-                appName: app,
-                payload: inserted,
-                fieldValue: value
-            ))
+            // Skip ZWSP-laden IME composition scraps on VS Code–based editors only.
+            let cleaned = inserted.replacingOccurrences(of: "\u{200B}", with: "")
+            let scrap = ElectronEditorAXPolicy.isUnreliableEditorValue(
+                role: role,
+                value: inserted,
+                vscodeBasedIDE: vscodeBased
+            )
+            if !cleaned.isEmpty, !scrap {
+                insertedCount = inserted.count
+                let app = front?.localizedName ?? "Unknown"
+                onEvent?(CaptureEvent(
+                    kind: .type,
+                    appName: app,
+                    payload: cleaned,
+                    fieldValue: value
+                ))
+            }
         }
 
         diagnose(

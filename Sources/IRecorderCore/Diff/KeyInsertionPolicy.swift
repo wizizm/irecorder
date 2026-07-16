@@ -29,13 +29,50 @@ public enum KeyInsertionPolicy {
         return out.isEmpty ? nil : out
     }
 
-    /// Key-fallback (Cursor): accept printable inserts; Chinese IME Latin is held/resolved
-    /// by `CompositionHoldBuffer` (no field value → keep Latin without apostrophe).
+    /// Strip IME/screen-reader zero-width markers before key-fallback decisions.
+    public static func sanitizeKeyInsertion(_ text: String) -> String {
+        text.replacingOccurrences(of: "\u{200B}", with: "")
+            .replacingOccurrences(of: "\u{FEFF}", with: "")
+    }
+
+    /// Return / keypad Enter without modifiers — used to trigger Cursor chat post-send capture.
+    public static func isPlainReturn(
+        keyCode: UInt16,
+        command: Bool,
+        option: Bool,
+        control: Bool,
+        shift: Bool
+    ) -> Bool {
+        if command || option || control || shift { return false }
+        return keyCode == 36 || keyCode == 76
+    }
+
+    /// Cmd+Enter — also used by some VS Code chat panels to send.
+    public static func isCommandReturn(
+        keyCode: UInt16,
+        command: Bool,
+        option: Bool,
+        control: Bool
+    ) -> Bool {
+        if !command || option || control { return false }
+        return keyCode == 36 || keyCode == 76
+    }
+
+    /// Key-fallback:
+    /// - VS Code–based + Chinese IME: accept nothing (chat Chinese captured after send only).
+    /// - Other apps + Chinese IME: drop Latin/pinyin; keep CJK / punctuation.
+    /// - ABC / non-Chinese IME: keep printable text.
     public static func shouldAcceptForKeyFallback(
         insertion: String,
-        chineseIMEActive: Bool
+        chineseIMEActive: Bool,
+        vscodeBasedIDE: Bool = false
     ) -> Bool {
-        _ = chineseIMEActive
-        return !insertion.isEmpty
+        let cleaned = sanitizeKeyInsertion(insertion)
+        guard !cleaned.isEmpty else { return false }
+        if vscodeBasedIDE, chineseIMEActive { return false }
+        if chineseIMEActive, CompositionHoldBuffer.isLatinCompositionOnly(cleaned) {
+            return false
+        }
+        return true
     }
 }
