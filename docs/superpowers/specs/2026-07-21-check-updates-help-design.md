@@ -99,6 +99,9 @@ Keys (Chinese / English), selected by preferred language containing `zh`:
 | downloadAndInstall | 下载并安装 | Download and Install |
 | cancel | 取消 | Cancel |
 | checkingForUpdates | 正在检查更新… | Checking for Updates… |
+| downloadingUpdate | 正在下载更新… | Downloading Update… |
+
+Progress UI: show a floating indeterminate panel immediately on check (and again while downloading/installing); user can cancel via button / window close / Esc (cancels the Task, no failure alert); dismiss before result alerts.
 
 Plus formatted messages for up-to-date / update-available (version strings), matching iSwitch tone.
 

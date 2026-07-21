@@ -23,7 +23,7 @@ struct MenuBarContent: View {
             openSettings()
             appState.bringSettingsWindowForward()
         }
-        Button(MenuL10n.text(.checkForUpdates)) {
+        Button(MenuL10n.checkForUpdatesMenuTitle()) {
             UpdateMenuActions.checkForUpdates()
         }
         Button(MenuL10n.text(.help)) {

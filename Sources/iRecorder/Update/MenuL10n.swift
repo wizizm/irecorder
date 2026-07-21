@@ -20,6 +20,8 @@ enum MenuL10nKey {
     case downloadAndInstall
     case cancel
     case checkingForUpdates
+    case downloadingUpdate
+    case updateTimedOut
     case ok
 }
 
@@ -31,6 +33,13 @@ enum MenuL10n {
         case .chinese: return zh[key]!
         case .english: return en[key]!
         }
+    }
+
+    static func checkForUpdatesMenuTitle(version: String = AppUpdateCoordinator.localVersion()) -> String {
+        CheckForUpdatesMenuTitle.format(
+            version: version,
+            language: language == .chinese ? .chinese : .english
+        )
     }
 
     static func updateAvailableMessage(current: String, latest: String) -> String {
@@ -51,6 +60,18 @@ enum MenuL10n {
         }
     }
 
+    static func failureMessage(for error: Error) -> String {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .timedOut:
+                return text(.updateTimedOut)
+            default:
+                break
+            }
+        }
+        return error.localizedDescription
+    }
+
     private static let en: [MenuL10nKey: String] = [
         .checkForUpdates: "Check for Updates…",
         .help: "Help",
@@ -60,6 +81,8 @@ enum MenuL10n {
         .downloadAndInstall: "Download and Install",
         .cancel: "Cancel",
         .checkingForUpdates: "Checking for Updates…",
+        .downloadingUpdate: "Downloading Update…",
+        .updateTimedOut: "Network timed out reaching GitHub. Check your proxy/VPN, then try again.",
         .ok: "OK",
     ]
 
@@ -72,6 +95,8 @@ enum MenuL10n {
         .downloadAndInstall: "下载并安装",
         .cancel: "取消",
         .checkingForUpdates: "正在检查更新…",
+        .downloadingUpdate: "正在下载更新…",
+        .updateTimedOut: "连接 GitHub 超时。请检查代理/VPN 是否正常，然后重试。",
         .ok: "好",
     ]
 }

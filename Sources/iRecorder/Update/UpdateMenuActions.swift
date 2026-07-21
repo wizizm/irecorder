@@ -4,6 +4,7 @@ import IRecorderCore
 
 enum UpdateMenuActions {
     private static var isChecking = false
+    private static var runningTask: Task<Void, Never>?
     private static let installer: any AppInstalling = AppBundleInstaller()
 
     static func openHelp() {
@@ -13,15 +14,30 @@ enum UpdateMenuActions {
     @MainActor
     static func checkForUpdates(
         checker: UpdateChecker = AppUpdateCoordinator.makeChecker(),
-        destinationApp: URL = Bundle.main.bundleURL
+        destinationApp: URL = Bundle.main.bundleURL,
+        progressPresenter: (any UpdateProgressPresenting)? = nil
     ) {
         guard !isChecking else { return }
         isChecking = true
-        Task { @MainActor in
-            defer { isChecking = false }
-            NSApp.activate(ignoringOtherApps: true)
+        let progress = UpdateProgressSession(presenter: progressPresenter ?? UpdateProgressPanel())
+        progress.onCancel = {
+            progress.dismissIfNeeded()
+            runningTask?.cancel()
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        progress.show(MenuL10n.text(.checkingForUpdates))
+
+        let task = Task { @MainActor in
+            defer {
+                progress.dismissIfNeeded()
+                isChecking = false
+                runningTask = nil
+            }
             do {
+                try Task.checkCancellation()
                 let outcome = try await checker.check()
+                try Task.checkCancellation()
+                progress.dismissIfNeeded()
                 switch outcome {
                 case .upToDate(let current):
                     presentAlert(
@@ -38,17 +54,24 @@ enum UpdateMenuActions {
                     alert.addButton(withTitle: MenuL10n.text(.downloadAndInstall))
                     alert.addButton(withTitle: MenuL10n.text(.cancel))
                     guard alert.runModal() == .alertFirstButtonReturn else { return }
+                    try Task.checkCancellation()
+                    progress.show(MenuL10n.text(.downloadingUpdate))
                     try await installer.install(from: downloadURL, replacing: destinationApp)
+                    // ponytail: install may finish after cancel (detached unzip); always relaunch if replace succeeded
+                    progress.dismissIfNeeded()
                     NSWorkspace.shared.open(destinationApp)
                     NSApplication.shared.terminate(nil)
                 }
             } catch {
+                progress.dismissIfNeeded()
+                guard UpdateCheckErrorPolicy.shouldPresentFailure(for: error) else { return }
                 presentAlert(
                     title: MenuL10n.text(.updateFailedTitle),
                     message: error.localizedDescription
                 )
             }
         }
+        runningTask = task
     }
 
     @MainActor

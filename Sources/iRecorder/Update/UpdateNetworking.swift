@@ -9,12 +9,46 @@ protocol ZipDownloading {
     func download(from remote: URL, to local: URL) async throws
 }
 
+enum UpdateHTTP {
+    /// Honours system PAC/proxy (fallback when direct fails).
+    static let systemSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 45
+        config.timeoutIntervalForResource = 180
+        config.waitsForConnectivity = true
+        return URLSession(configuration: config)
+    }()
+
+    /// Direct connection (preferred). System PAC to 127.0.0.1 often times out on GitHub while direct works.
+    static let directSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 20
+        config.timeoutIntervalForResource = 180
+        config.waitsForConnectivity = true
+        config.connectionProxyDictionary = [:]
+        return URLSession(configuration: config)
+    }()
+}
+
 struct URLSessionReleaseFetcher: ReleaseFetching {
     var url: URL = AppProject.latestReleaseAPIURL
-    var session: URLSession = .shared
+    /// Prefer direct: system PAC (e.g. 127.0.0.1) often hangs on GitHub while curl/direct works.
+    var primarySession: URLSession = UpdateHTTP.directSession
+    var fallbackSession: URLSession = UpdateHTTP.systemSession
 
     func fetchLatestReleaseData() async throws -> Data {
+        do {
+            return try await fetch(using: primarySession)
+        } catch {
+            try Task.checkCancellation()
+            guard UpdateNetworkRetry.shouldRetryWithoutProxy(error) else { throw error }
+            return try await fetch(using: fallbackSession)
+        }
+    }
+
+    private func fetch(using session: URLSession) async throws -> Data {
         var request = URLRequest(url: url)
+        request.timeoutInterval = 20
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("iRecorder", forHTTPHeaderField: "User-Agent")
         let (data, response) = try await session.data(for: request)
@@ -26,10 +60,23 @@ struct URLSessionReleaseFetcher: ReleaseFetching {
 }
 
 struct URLSessionZipDownloader: ZipDownloading {
-    var session: URLSession = .shared
+    var primarySession: URLSession = UpdateHTTP.directSession
+    var fallbackSession: URLSession = UpdateHTTP.systemSession
 
     func download(from remote: URL, to local: URL) async throws {
-        let (tempURL, response) = try await session.download(from: remote)
+        do {
+            try await download(from: remote, to: local, using: primarySession)
+        } catch {
+            try Task.checkCancellation()
+            guard UpdateNetworkRetry.shouldRetryWithoutProxy(error) else { throw error }
+            try await download(from: remote, to: local, using: fallbackSession)
+        }
+    }
+
+    private func download(from remote: URL, to local: URL, using session: URLSession) async throws {
+        var request = URLRequest(url: remote)
+        request.timeoutInterval = 180
+        let (tempURL, response) = try await session.download(for: request)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw UpdateCheckerError.downloadFailed
         }
