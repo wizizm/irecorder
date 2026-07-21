@@ -195,6 +195,7 @@ final class AppState: ObservableObject {
                 guard let self else { return }
                 self.pasteInjector.paste(payload: item.payload, into: priorApp)
             },
+            // Panel already hides itself; no AppState side effects needed.
             onDismiss: {}
         )
     }
