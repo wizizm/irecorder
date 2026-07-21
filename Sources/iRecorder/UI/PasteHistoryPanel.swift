@@ -22,6 +22,7 @@ struct PasteHistoryView: View {
     @State private var searchItems: [PasteHistoryItem] = []
     @State private var searchGeneration = 0
     @State private var todayGeneration = 0
+    @FocusState private var searchFieldFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -39,6 +40,7 @@ struct PasteHistoryView: View {
             if tab == .search {
                 TextField("搜索内容或应用名…", text: $searchQuery)
                     .textFieldStyle(.roundedBorder)
+                    .focused($searchFieldFocused)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
             }
@@ -59,7 +61,13 @@ struct PasteHistoryView: View {
         .onAppear { reloadToday() }
         .onChange(of: tab) { _, newTab in
             if newTab == .today {
+                searchFieldFocused = false
                 reloadToday()
+            } else {
+                // TextField mounts with the tab; focus next runloop so it exists.
+                DispatchQueue.main.async {
+                    searchFieldFocused = true
+                }
             }
         }
         .onChange(of: searchQuery) { _, newValue in
