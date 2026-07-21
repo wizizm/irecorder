@@ -21,3 +21,13 @@ import Testing
     #expect(ListKeyboardSelection.moveUp(from: 2, count: 3) == 1)
     #expect(ListKeyboardSelection.moveUp(from: 0, count: 3) == 0)
 }
+
+@Test func segmentTabMovesForwardAndWraps() {
+    #expect(ListKeyboardSelection.moveTab(from: 0, count: 2, forward: true) == 1)
+    #expect(ListKeyboardSelection.moveTab(from: 1, count: 2, forward: true) == 0)
+}
+
+@Test func segmentTabMovesBackwardAndWraps() {
+    #expect(ListKeyboardSelection.moveTab(from: 1, count: 2, forward: false) == 0)
+    #expect(ListKeyboardSelection.moveTab(from: 0, count: 2, forward: false) == 1)
+}

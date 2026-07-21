@@ -92,6 +92,14 @@ struct PasteHistoryView: View {
                 onReturn: {
                     if searchFieldFocused { return }
                     confirmSelection()
+                },
+                onLeft: {
+                    if searchFieldFocused { return }
+                    moveTab(forward: false)
+                },
+                onRight: {
+                    if searchFieldFocused { return }
+                    moveTab(forward: true)
                 }
             )
         )
@@ -198,6 +206,13 @@ struct PasteHistoryView: View {
             : ListKeyboardSelection.moveUp(from: selectedIndex, count: count)
     }
 
+    private func moveTab(forward: Bool) {
+        let tabs = Tab.allCases
+        guard let current = tabs.firstIndex(of: tab) else { return }
+        let next = ListKeyboardSelection.moveTab(from: current, count: tabs.count, forward: forward)
+        tab = tabs[next]
+    }
+
     private func confirmSelection() {
         guard let selectedIndex, activeItems.indices.contains(selectedIndex) else { return }
         onSelect(activeItems[selectedIndex])
@@ -260,12 +275,14 @@ struct PasteHistoryView: View {
     }
 }
 
-/// Local keyDown monitor so ↑/↓/↩ work in a nonactivating floating panel.
+/// Local keyDown monitor so ↑/↓/←/→/↩ work in a nonactivating floating panel.
 private struct PasteHistoryKeyMonitor: NSViewRepresentable {
     var isSearchFieldFocused: Bool
     var onDown: () -> Void
     var onUp: () -> Void
     var onReturn: () -> Void
+    var onLeft: () -> Void
+    var onRight: () -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -277,7 +294,9 @@ private struct PasteHistoryKeyMonitor: NSViewRepresentable {
             isSearchFieldFocused: isSearchFieldFocused,
             onDown: onDown,
             onUp: onUp,
-            onReturn: onReturn
+            onReturn: onReturn,
+            onLeft: onLeft,
+            onRight: onRight
         )
         return view
     }
@@ -287,6 +306,8 @@ private struct PasteHistoryKeyMonitor: NSViewRepresentable {
         context.coordinator.onDown = onDown
         context.coordinator.onUp = onUp
         context.coordinator.onReturn = onReturn
+        context.coordinator.onLeft = onLeft
+        context.coordinator.onRight = onRight
     }
 
     static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
@@ -298,18 +319,24 @@ private struct PasteHistoryKeyMonitor: NSViewRepresentable {
         var onDown: (() -> Void)?
         var onUp: (() -> Void)?
         var onReturn: (() -> Void)?
+        var onLeft: (() -> Void)?
+        var onRight: (() -> Void)?
         private var monitor: Any?
 
         func attach(
             isSearchFieldFocused: Bool,
             onDown: @escaping () -> Void,
             onUp: @escaping () -> Void,
-            onReturn: @escaping () -> Void
+            onReturn: @escaping () -> Void,
+            onLeft: @escaping () -> Void,
+            onRight: @escaping () -> Void
         ) {
             self.isSearchFieldFocused = isSearchFieldFocused
             self.onDown = onDown
             self.onUp = onUp
             self.onReturn = onReturn
+            self.onLeft = onLeft
+            self.onRight = onRight
             guard monitor == nil else { return }
             monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
                 guard let self else { return event }
@@ -320,6 +347,14 @@ private struct PasteHistoryKeyMonitor: NSViewRepresentable {
                 case 126: // ↑
                     if self.isSearchFieldFocused { return event }
                     DispatchQueue.main.async { self.onUp?() }
+                    return nil
+                case 123: // ←
+                    if self.isSearchFieldFocused { return event }
+                    DispatchQueue.main.async { self.onLeft?() }
+                    return nil
+                case 124: // →
+                    if self.isSearchFieldFocused { return event }
+                    DispatchQueue.main.async { self.onRight?() }
                     return nil
                 case 36: // ↩
                     if self.isSearchFieldFocused { return event }
