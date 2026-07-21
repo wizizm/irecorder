@@ -10,7 +10,7 @@
 - Prefer preserving original copy/paste formatting (including newlines) so content can be re-copied from the log without flattening.
 - Settings window should open normally when closed, and if already open but obscured, bring it to the front; if mostly off-screen or stuck at the bottom, recenter/clamp on screen; keep the pane compact (avoid excessive width and scrollbars).
 - Prefer a user-configurable global hotkey (default ⇧⌘L) to open today's log; recording requires ⌘ or ⌃; Escape cancels recording.
-- Prefer a separate configurable 「粘贴历史」 hotkey (default off until recorded; must not share the open-today-log chord); keep open-today-log unchanged. Panel: Today tab (`copy`/`copy_paste`, payload-deduped) + Search tab (all log kinds); select → pasteboard + restore focus + ⌘V. Accessibility required for paste into other apps; programmatic inject is not re-logged.
+- Prefer a separate configurable 「粘贴历史」 hotkey (default off until recorded; must not share the open-today-log chord); keep open-today-log unchanged. Panel: Today tab (`copy`/`copy_paste`, payload-deduped) + Search tab (all log kinds); open near the mouse (paste target), select → pasteboard + restore focus + ⌘V. Accessibility required for paste into other apps; programmatic inject is not re-logged.
 - Menu bar icon should stay crisp at menu-bar size (no white edge, not oversized or blurry).
 
 ## Learned Workspace Facts
