@@ -22,6 +22,12 @@ final class AppState: ObservableObject {
 
     private let hotKeyMonitor: HotKeyMonitor
 
+    /// Fixed Carbon hot-key IDs for multi-binding dispatch.
+    private enum HotKeyBindingID {
+        static let openTodayLog: UInt32 = 1
+        static let pasteHistory: UInt32 = 2
+    }
+
     init(settings: SettingsStore = SettingsStore()) {
         self.settings = settings
         self.coordinator = CaptureCoordinator(settings: settings)
@@ -33,16 +39,37 @@ final class AppState: ObservableObject {
         self.clipboardTruncateMaxKB = settings.clipboardTruncateMaxBytes / 1000
         self.typeLineIdleSeconds = settings.typeLineIdleSeconds
         self.openTodayLogHotKey = settings.openTodayLogHotKey
-        self.hotKeyMonitor = HotKeyMonitor(spec: settings.openTodayLogHotKey)
-        self.hotKeyMonitor.onTrigger = { [weak self] in
+        self.hotKeyMonitor = HotKeyMonitor()
+        self.hotKeyMonitor.setBinding(
+            id: HotKeyBindingID.openTodayLog,
+            spec: settings.openTodayLogHotKey
+        ) { [weak self] in
             self?.openTodayLog()
+        }
+        // Task 7: paste-history UI; stub callback until then.
+        self.hotKeyMonitor.setBinding(
+            id: HotKeyBindingID.pasteHistory,
+            spec: settings.pasteHistoryHotKey
+        ) {
+            // no-op
         }
     }
 
     func start() {
         applyLoginItem(settings.launchAtLogin)
         coordinator.start()
-        hotKeyMonitor.update(spec: openTodayLogHotKey)
+        hotKeyMonitor.setBinding(
+            id: HotKeyBindingID.openTodayLog,
+            spec: openTodayLogHotKey
+        ) { [weak self] in
+            self?.openTodayLog()
+        }
+        hotKeyMonitor.setBinding(
+            id: HotKeyBindingID.pasteHistory,
+            spec: settings.pasteHistoryHotKey
+        ) {
+            // no-op
+        }
         hotKeyMonitor.start()
         refreshAccessibility()
     }
@@ -196,7 +223,12 @@ final class AppState: ObservableObject {
     func updateOpenTodayLogHotKey(_ hotKey: HotKeySpec) {
         openTodayLogHotKey = hotKey
         settings.openTodayLogHotKey = hotKey
-        hotKeyMonitor.update(spec: hotKey)
+        hotKeyMonitor.setBinding(
+            id: HotKeyBindingID.openTodayLog,
+            spec: hotKey
+        ) { [weak self] in
+            self?.openTodayLog()
+        }
         hotKeyMonitor.start()
     }
 

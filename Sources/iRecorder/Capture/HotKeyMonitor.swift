@@ -3,53 +3,80 @@ import Carbon
 import Foundation
 import IRecorderCore
 
-/// Registers a system hot key via Carbon (works without relying on NSEvent global monitors).
+/// Registers system hot keys via Carbon (works without relying on NSEvent global monitors).
+/// Supports multiple bindings dispatched by fixed `EventHotKeyID.id` values.
 final class HotKeyMonitor {
-    var onTrigger: (() -> Void)?
     /// When true, ignore matches (used while the Settings shortcut recorder is active).
     var isSuspended = false
 
-    private var spec: HotKeySpec
-    private var hotKeyRef: EventHotKeyRef?
+    private struct Binding {
+        var spec: HotKeySpec
+        var onTrigger: () -> Void
+        var hotKeyRef: EventHotKeyRef?
+    }
+
+    private var bindings: [UInt32: Binding] = [:]
     private var handlerRef: EventHandlerRef?
 
     private static let signature = OSType(0x69526331) // 'iRc1'
-    private static let hotKeyID: UInt32 = 1
 
-    init(spec: HotKeySpec) {
-        self.spec = spec
+    func setBinding(id: UInt32, spec: HotKeySpec, onTrigger: @escaping () -> Void) {
+        if let existing = bindings[id]?.hotKeyRef {
+            UnregisterEventHotKey(existing)
+        }
+        bindings[id] = Binding(spec: spec, onTrigger: onTrigger, hotKeyRef: nil)
     }
 
-    func update(spec: HotKeySpec) {
-        self.spec = spec
+    func removeBinding(id: UInt32) {
+        if let ref = bindings[id]?.hotKeyRef {
+            UnregisterEventHotKey(ref)
+        }
+        bindings.removeValue(forKey: id)
     }
 
+    /// Re-register all enabled specs. Disabled bindings stay stored but unregistered.
     func start() {
-        stop()
-        guard spec.isEnabled else { return }
+        stopRegistrations()
         installHandlerIfNeeded()
-        var id = EventHotKeyID(signature: Self.signature, id: Self.hotKeyID)
-        let status = RegisterEventHotKey(
-            UInt32(spec.keyCode),
-            spec.carbonModifiers,
-            id,
-            GetApplicationEventTarget(),
-            0,
-            &hotKeyRef
-        )
-        if status != noErr {
-            NSLog("iRecorder: RegisterEventHotKey failed status=%d keyCode=%u mods=%u", status, spec.keyCode, spec.carbonModifiers)
+        for id in bindings.keys.sorted() {
+            guard var binding = bindings[id], binding.spec.isEnabled else { continue }
+            let eventID = EventHotKeyID(signature: Self.signature, id: id)
+            var hotKeyRef: EventHotKeyRef?
+            let status = RegisterEventHotKey(
+                UInt32(binding.spec.keyCode),
+                binding.spec.carbonModifiers,
+                eventID,
+                GetApplicationEventTarget(),
+                0,
+                &hotKeyRef
+            )
+            if status != noErr {
+                NSLog(
+                    "iRecorder: RegisterEventHotKey failed status=%d id=%u keyCode=%u mods=%u",
+                    status, id, binding.spec.keyCode, binding.spec.carbonModifiers
+                )
+            }
+            binding.hotKeyRef = hotKeyRef
+            bindings[id] = binding
         }
     }
 
     func stop() {
-        if let hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-            self.hotKeyRef = nil
-        }
+        stopRegistrations()
         if let handlerRef {
             RemoveEventHandler(handlerRef)
             self.handlerRef = nil
+        }
+    }
+
+    private func stopRegistrations() {
+        for id in Array(bindings.keys) {
+            guard var binding = bindings[id] else { continue }
+            if let ref = binding.hotKeyRef {
+                UnregisterEventHotKey(ref)
+                binding.hotKeyRef = nil
+                bindings[id] = binding
+            }
         }
     }
 
@@ -75,13 +102,13 @@ final class HotKeyMonitor {
             )
             guard err == noErr,
                   hotKeyID.signature == HotKeyMonitor.signature,
-                  hotKeyID.id == HotKeyMonitor.hotKeyID
+                  let binding = monitor.bindings[hotKeyID.id]
             else {
                 return noErr
             }
             guard !monitor.isSuspended else { return noErr }
             DispatchQueue.main.async {
-                monitor.onTrigger?()
+                binding.onTrigger()
             }
             return noErr
         }
