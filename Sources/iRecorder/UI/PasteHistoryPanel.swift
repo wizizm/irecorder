@@ -152,34 +152,43 @@ struct PasteHistoryView: View {
     }
 
     private func itemList(_ items: [PasteHistoryItem], showKind: Bool) -> some View {
-        List(selection: $selectedIndex) {
-            ForEach(items.indices, id: \.self) { index in
-                let item = items[index]
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(Self.shortTime(item.date))
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 52, alignment: .leading)
-                    if showKind {
-                        Text(Self.kindBadge(item.kind))
-                            .font(.caption2)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(Color.secondary.opacity(0.15))
-                            .clipShape(RoundedRectangle(cornerRadius: 3))
+        ScrollViewReader { proxy in
+            List(selection: $selectedIndex) {
+                ForEach(items.indices, id: \.self) { index in
+                    let item = items[index]
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(Self.shortTime(item.date))
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 52, alignment: .leading)
+                        if showKind {
+                            Text(Self.kindBadge(item.kind))
+                                .font(.caption2)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Color.secondary.opacity(0.15))
+                                .clipShape(RoundedRectangle(cornerRadius: 3))
+                        }
+                        Text(Self.preview(item.payload))
+                            .font(.body)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    Text(Self.preview(item.payload))
-                        .font(.body)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .tag(index)
+                    .id(index)
+                    .onTapGesture { onSelect(item) }
                 }
-                .contentShape(Rectangle())
-                .tag(index)
-                .onTapGesture { onSelect(item) }
+            }
+            .listStyle(.inset)
+            .onChange(of: selectedIndex) { _, index in
+                guard let index, items.indices.contains(index) else { return }
+                withAnimation(.easeInOut(duration: 0.12)) {
+                    proxy.scrollTo(index, anchor: .center)
+                }
             }
         }
-        .listStyle(.inset)
     }
 
     private func moveSelection(down: Bool) {
