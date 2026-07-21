@@ -122,11 +122,6 @@ struct PasteHistoryView: View {
                             .background(Color.secondary.opacity(0.15))
                             .clipShape(RoundedRectangle(cornerRadius: 3))
                     }
-                    Text(item.appName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .frame(width: 72, alignment: .leading)
                     Text(Self.preview(item.payload))
                         .font(.body)
                         .lineLimit(1)
