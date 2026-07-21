@@ -81,7 +81,7 @@ import Testing
 - [ ] **Step 2: Run test — expect fail (module / type missing)**
 
 ```bash
-cd /Users/linwenjie/workspace/irecorder && swift test --filter CaptureEventTests
+cd /Users/linwenjie/workspace/os-tools/irecorder && swift test --filter CaptureEventTests
 ```
 
 - [ ] **Step 3: Minimal Package.swift + CaptureEvent**
