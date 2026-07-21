@@ -18,6 +18,10 @@ final class CaptureCoordinator {
     private var idlePoller: Poller?
     private var didStart = false
     private var activity: NSObjectProtocol?
+    /// Approach A: ignore matching paste (and copy slip-through) after programmatic clipboard write.
+    private var ignoreNextPasteMatching: String?
+    private var ignoreClipboardExpiresAt: Date?
+    private let programmaticSuppressTTL: TimeInterval = 1.5
     private let log = Logger(subsystem: "com.linwenjie.iRecorder", category: "capture")
 
     init(settings: SettingsStore) {
@@ -123,6 +127,14 @@ final class CaptureCoordinator {
         return settings.logDirectoryURL.appendingPathComponent(name)
     }
 
+    /// Call before writing the pasteboard for a history paste so copy/paste/AX echoes are not logged.
+    func noteProgrammaticClipboard(_ payload: String) {
+        clipboard.syncLastString(payload)
+        ignoreNextPasteMatching = payload
+        ignoreClipboardExpiresAt = Date().addingTimeInterval(programmaticSuppressTTL)
+        typeSuppressor.notePaste(payload)
+    }
+
     private func startIdlePoller() {
         idlePoller?.stop()
         let poller = Poller(interval: 0.25) { [weak self] in
@@ -133,6 +145,17 @@ final class CaptureCoordinator {
         }
         poller.start()
         idlePoller = poller
+    }
+
+    private func shouldIgnoreProgrammaticClipboard(_ payload: String) -> Bool {
+        guard let expected = ignoreNextPasteMatching,
+              let expires = ignoreClipboardExpiresAt,
+              Date() < expires else {
+            ignoreNextPasteMatching = nil
+            ignoreClipboardExpiresAt = nil
+            return false
+        }
+        return payload == expected
     }
 
     private func writeSessionStarted() {
@@ -174,6 +197,7 @@ final class CaptureCoordinator {
         }
         switch event.kind {
         case .paste:
+            if shouldIgnoreProgrammaticClipboard(event.payload) { return }
             flushTypePending()
             typeSuppressor.notePaste(event.payload)
             writeAll(copyPasteMerger.notePaste(
@@ -182,6 +206,7 @@ final class CaptureCoordinator {
                 at: event.date
             ))
         case .copy:
+            if shouldIgnoreProgrammaticClipboard(event.payload) { return }
             flushTypePending()
             writeAll(copyPasteMerger.noteCopy(
                 appName: event.appName,

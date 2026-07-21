@@ -25,6 +25,12 @@ final class ClipboardWatcher {
         poller = nil
     }
 
+    /// Align watcher state with an external pasteboard write so the next poll does not emit `.copy`.
+    func syncLastString(_ text: String) {
+        lastString = text
+        lastChangeCount = NSPasteboard.general.changeCount
+    }
+
     private func tick() {
         let board = NSPasteboard.general
         let count = board.changeCount
