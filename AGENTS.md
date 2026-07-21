@@ -10,7 +10,7 @@
 - Prefer preserving original copy/paste formatting (including newlines) so content can be re-copied from the log without flattening.
 - Settings window should open normally when closed, and if already open but obscured, bring it to the front; if mostly off-screen or stuck at the bottom, recenter/clamp on screen; keep the pane compact (avoid excessive width and scrollbars).
 - Prefer a user-configurable global hotkey (default ⇧⌘L) to open today's log; recording requires ⌘ or ⌃; Escape cancels recording.
-- Prefer a separate configurable 「粘贴历史」 hotkey (default off until recorded; must not share the open-today-log chord); keep open-today-log unchanged. Panel: Today tab (`copy`/`copy_paste`, payload-deduped) + Search tab (all log kinds); open near the mouse (paste target), select → pasteboard + restore focus + ⌘V. Accessibility required for paste into other apps; programmatic inject is not re-logged.
+- Prefer a separate configurable 「粘贴历史」 hotkey (default off until recorded; must not share the open-today-log chord); keep open-today-log unchanged. Panel: default today’s unique `copy`/`copy_paste`; top search bar — ⌘F focuses, Enter searches all log kinds; open near the mouse; select → pasteboard + restore focus + ⌘V. Accessibility required for paste into other apps; programmatic inject is not re-logged.
 - Menu bar icon should stay crisp at menu-bar size (no white edge, not oversized or blurry).
 
 ## Learned Workspace Facts
@@ -21,7 +21,7 @@
 - `session_started` log lines include `ax=0|1` so Accessibility trust can be verified after reinstalls; copy/paste can still work when `ax=0`, but type capture will not.
 - Build/package entrypoint is `./scripts/package-app.sh` (SwiftPM release build → `dist/iRecorder.app`, optional install to `/Applications`).
 - Global hotkeys use Carbon `RegisterEventHotKey` via multi-ID `HotKeyMonitor` (open-today-log + 粘贴历史); still depend on Accessibility for reliable ⌘V injection.
-- 「粘贴历史」 is log-backed (no separate clipboard DB): Today = `copy`/`copy_paste` newest-first payload dedupe; Search = case-insensitive substring across daily `.log` kinds; programmatic pasteboard+⌘V must be suppressed from capture.
+- 「粘贴历史」 is log-backed (no separate clipboard DB): default list = today’s `copy`/`copy_paste` newest-first payload dedupe; ⌘F + Enter search = case-insensitive substring across daily `.log` kinds; programmatic pasteboard+⌘V must be suppressed from capture.
 - Menu bar includes Check for Updates (GitHub `releases/latest` vs `CFBundleShortVersionString`, installs `iRecorder.app.zip` over the running bundle) and Help (opens repo Issues). `scripts/package-app.sh` also emits `dist/iRecorder.app.zip` for release assets.
 - Windows counterpart is published separately at `https://github.com/wizizm/irecorder-for-windows` and is linked from the READMEs.
 - Self-capture of the app’s own Console/log output previously caused exponential backslash escaping on copy/paste lines; filtering self-capture is part of the capture design.
