@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var retentionText = ""
     @State private var truncateKBText = ""
     @State private var isRecordingHotKey = false
+    @State private var isRecordingPasteHistoryHotKey = false
 
     private let labelWidth: CGFloat = 120
 
@@ -79,15 +80,15 @@ struct SettingsView: View {
                     Button(isRecordingHotKey ? "按下快捷键…" : appState.openTodayLogHotKey.displayString) {
                         if isRecordingHotKey {
                             isRecordingHotKey = false
-                            appState.setHotKeyRecordingSuspended(false)
+                            syncHotKeySuspend()
                         } else {
-                            beginHotKeyCapture()
+                            beginOpenTodayLogHotKeyCapture()
                         }
                     }
                     .frame(minWidth: 88)
                     Button("恢复默认") {
                         isRecordingHotKey = false
-                        appState.setHotKeyRecordingSuspended(false)
+                        syncHotKeySuspend()
                         appState.updateOpenTodayLogHotKey(.defaultOpenTodayLog)
                     }
                 }
@@ -96,9 +97,45 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    Text("粘贴历史")
+                        .frame(width: labelWidth, alignment: .leading)
+                    Toggle("", isOn: Binding(
+                        get: { appState.pasteHistoryHotKey.isEnabled },
+                        set: { enabled in
+                            var key = appState.pasteHistoryHotKey
+                            key.isEnabled = enabled
+                            appState.updatePasteHistoryHotKey(key)
+                        }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.checkbox)
+                    Button(isRecordingPasteHistoryHotKey ? "按下快捷键…" : appState.pasteHistoryHotKey.displayString) {
+                        if isRecordingPasteHistoryHotKey {
+                            isRecordingPasteHistoryHotKey = false
+                            syncHotKeySuspend()
+                        } else {
+                            beginPasteHistoryHotKeyCapture()
+                        }
+                    }
+                    .frame(minWidth: 88)
+                    Button("清除") {
+                        isRecordingPasteHistoryHotKey = false
+                        syncHotKeySuspend()
+                        appState.updatePasteHistoryHotKey(.defaultPasteHistory)
+                    }
+                }
+                Text("全局快捷键打开粘贴历史（默认关闭，需自行设置）")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             .onExitCommand {
-                if isRecordingHotKey {
+                if isRecordingHotKey || isRecordingPasteHistoryHotKey {
                     isRecordingHotKey = false
+                    isRecordingPasteHistoryHotKey = false
                     appState.setHotKeyRecordingSuspended(false)
                 }
             }
@@ -133,12 +170,21 @@ struct SettingsView: View {
             ))
         }
         .padding(20)
-        .frame(width: 400, height: 560)
-        .background(HotKeyCaptureView(isActive: $isRecordingHotKey) { spec in
-            appState.updateOpenTodayLogHotKey(spec)
-            appState.setHotKeyRecordingSuspended(false)
-            isRecordingHotKey = false
-        })
+        .frame(width: 400, height: 620)
+        .background(
+            ZStack {
+                HotKeyCaptureView(isActive: $isRecordingHotKey) { spec in
+                    appState.updateOpenTodayLogHotKey(spec)
+                    isRecordingHotKey = false
+                    syncHotKeySuspend()
+                }
+                HotKeyCaptureView(isActive: $isRecordingPasteHistoryHotKey) { spec in
+                    appState.updatePasteHistoryHotKey(spec)
+                    isRecordingPasteHistoryHotKey = false
+                    syncHotKeySuspend()
+                }
+            }
+        )
         .onAppear {
             retentionText = String(appState.retentionDays)
             truncateKBText = String(appState.clipboardTruncateMaxKB)
@@ -151,16 +197,33 @@ struct SettingsView: View {
             commitRetention()
             commitTruncate()
             isRecordingHotKey = false
+            isRecordingPasteHistoryHotKey = false
             appState.setHotKeyRecordingSuspended(false)
         }
         .onChange(of: isRecordingHotKey) { _, recording in
-            appState.setHotKeyRecordingSuspended(recording)
+            if recording { isRecordingPasteHistoryHotKey = false }
+            syncHotKeySuspend()
+        }
+        .onChange(of: isRecordingPasteHistoryHotKey) { _, recording in
+            if recording { isRecordingHotKey = false }
+            syncHotKeySuspend()
         }
     }
 
-    private func beginHotKeyCapture() {
+    private func beginOpenTodayLogHotKeyCapture() {
+        isRecordingPasteHistoryHotKey = false
         isRecordingHotKey = true
         appState.setHotKeyRecordingSuspended(true)
+    }
+
+    private func beginPasteHistoryHotKeyCapture() {
+        isRecordingHotKey = false
+        isRecordingPasteHistoryHotKey = true
+        appState.setHotKeyRecordingSuspended(true)
+    }
+
+    private func syncHotKeySuspend() {
+        appState.setHotKeyRecordingSuspended(isRecordingHotKey || isRecordingPasteHistoryHotKey)
     }
 
     private func groupTitle(_ title: String) -> some View {

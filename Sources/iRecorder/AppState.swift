@@ -19,8 +19,11 @@ final class AppState: ObservableObject {
     @Published var clipboardTruncateMaxKB: Int
     @Published var typeLineIdleSeconds: Int
     @Published var openTodayLogHotKey: HotKeySpec
+    @Published var pasteHistoryHotKey: HotKeySpec
 
     private let hotKeyMonitor: HotKeyMonitor
+    private let pasteInjector: PasteInjector
+    private let pasteHistoryPanel = PasteHistoryPanelController()
 
     /// Fixed Carbon hot-key IDs for multi-binding dispatch.
     private enum HotKeyBindingID {
@@ -39,19 +42,20 @@ final class AppState: ObservableObject {
         self.clipboardTruncateMaxKB = settings.clipboardTruncateMaxBytes / 1000
         self.typeLineIdleSeconds = settings.typeLineIdleSeconds
         self.openTodayLogHotKey = settings.openTodayLogHotKey
+        self.pasteHistoryHotKey = settings.pasteHistoryHotKey
         self.hotKeyMonitor = HotKeyMonitor()
+        self.pasteInjector = PasteInjector(coordinator: coordinator)
         self.hotKeyMonitor.setBinding(
             id: HotKeyBindingID.openTodayLog,
             spec: settings.openTodayLogHotKey
         ) { [weak self] in
             self?.openTodayLog()
         }
-        // Task 7: paste-history UI; stub callback until then.
         self.hotKeyMonitor.setBinding(
             id: HotKeyBindingID.pasteHistory,
             spec: settings.pasteHistoryHotKey
-        ) {
-            // no-op
+        ) { [weak self] in
+            self?.showPasteHistory()
         }
     }
 
@@ -66,9 +70,9 @@ final class AppState: ObservableObject {
         }
         hotKeyMonitor.setBinding(
             id: HotKeyBindingID.pasteHistory,
-            spec: settings.pasteHistoryHotKey
-        ) {
-            // no-op
+            spec: pasteHistoryHotKey
+        ) { [weak self] in
+            self?.showPasteHistory()
         }
         hotKeyMonitor.start()
         refreshAccessibility()
@@ -182,6 +186,19 @@ final class AppState: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
+    /// Capture frontmost app, show paste-history panel; select pastes into prior app.
+    func showPasteHistory() {
+        let priorApp = NSWorkspace.shared.frontmostApplication
+        pasteHistoryPanel.show(
+            logDirectory: settings.logDirectoryURL,
+            onSelect: { [weak self] item in
+                guard let self else { return }
+                self.pasteInjector.paste(payload: item.payload, into: priorApp)
+            },
+            onDismiss: {}
+        )
+    }
+
     func openLogFolder() {
         try? FileManager.default.createDirectory(
             at: settings.logDirectoryURL,
@@ -228,6 +245,18 @@ final class AppState: ObservableObject {
             spec: hotKey
         ) { [weak self] in
             self?.openTodayLog()
+        }
+        hotKeyMonitor.start()
+    }
+
+    func updatePasteHistoryHotKey(_ hotKey: HotKeySpec) {
+        pasteHistoryHotKey = hotKey
+        settings.pasteHistoryHotKey = hotKey
+        hotKeyMonitor.setBinding(
+            id: HotKeyBindingID.pasteHistory,
+            spec: hotKey
+        ) { [weak self] in
+            self?.showPasteHistory()
         }
         hotKeyMonitor.start()
     }

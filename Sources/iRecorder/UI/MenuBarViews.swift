@@ -11,6 +11,7 @@ struct MenuBarContent: View {
         }
         Divider()
         Button("打开今日日志") { appState.openTodayLog() }
+        Button("粘贴历史…") { appState.showPasteHistory() }
         Button("打开日志文件夹") { appState.openLogFolder() }
         Divider()
         if !appState.accessibilityTrusted {
