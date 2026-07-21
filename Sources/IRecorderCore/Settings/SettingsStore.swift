@@ -11,6 +11,7 @@ public final class SettingsStore: @unchecked Sendable {
         static let clipboardTruncateMaxBytes = "clipboardTruncateMaxBytes"
         static let typeLineIdleSeconds = "typeLineIdleSeconds"
         static let openTodayLogHotKey = "openTodayLogHotKey"
+        static let pasteHistoryHotKey = "pasteHistoryHotKey"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -86,6 +87,23 @@ public final class SettingsStore: @unchecked Sendable {
         set {
             if let data = try? JSONEncoder().encode(newValue) {
                 defaults.set(data, forKey: Key.openTodayLogHotKey)
+            }
+        }
+    }
+
+    /// Global shortcut for paste history. Default disabled.
+    public var pasteHistoryHotKey: HotKeySpec {
+        get {
+            guard let data = defaults.data(forKey: Key.pasteHistoryHotKey),
+                  let decoded = try? JSONDecoder().decode(HotKeySpec.self, from: data)
+            else {
+                return .defaultPasteHistory
+            }
+            return decoded
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                defaults.set(data, forKey: Key.pasteHistoryHotKey)
             }
         }
     }

@@ -9,6 +9,10 @@ import Testing
     #expect(key.displayString == "⇧⌘L")
 }
 
+@Test func pasteHistoryHotKeyDefaultIsDisabled() {
+    #expect(HotKeySpec.defaultPasteHistory.isEnabled == false)
+}
+
 @Test func hotKeyMatchesExactModifiersAndKey() {
     let key = HotKeySpec(keyCode: 37, command: true, shift: true, option: false, control: false, isEnabled: true)
     #expect(key.matches(keyCode: 37, command: true, shift: true, option: false, control: false))

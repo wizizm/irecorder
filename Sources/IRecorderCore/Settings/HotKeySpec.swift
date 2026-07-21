@@ -35,6 +35,16 @@ public struct HotKeySpec: Equatable, Codable, Sendable {
         isEnabled: true
     )
 
+    /// Default paste-history hotkey placeholder (⌘⇧L); disabled until user enables.
+    public static let defaultPasteHistory = HotKeySpec(
+        keyCode: 37,
+        command: true,
+        shift: true,
+        option: false,
+        control: false,
+        isEnabled: false
+    )
+
     public func matches(
         keyCode: UInt16,
         command: Bool,

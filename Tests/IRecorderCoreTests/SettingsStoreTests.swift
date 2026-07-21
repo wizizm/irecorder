@@ -13,6 +13,7 @@ import Testing
     #expect(store.clipboardTruncateMaxBytes == 100_000)
     #expect(store.typeLineIdleSeconds == 3)
     #expect(store.openTodayLogHotKey == HotKeySpec.defaultOpenTodayLog)
+    #expect(store.pasteHistoryHotKey == HotKeySpec.defaultPasteHistory)
     #expect(store.logDirectoryURL.path.hasSuffix("Documents/iRecorder"))
 }
 
@@ -34,6 +35,14 @@ import Testing
         control: false,
         isEnabled: false
     )
+    store.pasteHistoryHotKey = HotKeySpec(
+        keyCode: 35,
+        command: true,
+        shift: true,
+        option: false,
+        control: false,
+        isEnabled: true
+    )
     let custom = URL(fileURLWithPath: "/tmp/irecorder-test-logs")
     store.logDirectoryURL = custom
 
@@ -50,6 +59,14 @@ import Testing
         option: true,
         control: false,
         isEnabled: false
+    ))
+    #expect(again.pasteHistoryHotKey == HotKeySpec(
+        keyCode: 35,
+        command: true,
+        shift: true,
+        option: false,
+        control: false,
+        isEnabled: true
     ))
     #expect(again.logDirectoryURL == custom)
 }
@@ -70,4 +87,21 @@ import Testing
     defaults.set("⌘⇧L", forKey: "openTodayLogHotKey")
     let store = SettingsStore(defaults: defaults)
     #expect(store.openTodayLogHotKey == HotKeySpec.defaultOpenTodayLog)
+}
+
+@Test func settingsPasteHistoryHotKeyDefaultsDisabled() {
+    let suite = "test.irecorder.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let store = SettingsStore(defaults: defaults)
+    #expect(store.pasteHistoryHotKey == HotKeySpec.defaultPasteHistory)
+    #expect(store.pasteHistoryHotKey.isEnabled == false)
+}
+
+@Test func pasteHistoryHotKeyCorruptFallsBack() {
+    let suite = "test.irecorder.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    defaults.set(Data("bad".utf8), forKey: "pasteHistoryHotKey")
+    #expect(SettingsStore(defaults: defaults).pasteHistoryHotKey == .defaultPasteHistory)
 }
