@@ -21,6 +21,7 @@ struct PasteHistoryView: View {
     @State private var searchQuery = ""
     @State private var searchItems: [PasteHistoryItem] = []
     @State private var searchGeneration = 0
+    @State private var todayGeneration = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -132,16 +133,36 @@ struct PasteHistoryView: View {
     }
 
     private func reloadToday() {
-        todayItems = LogHistoryQuery.todayUniqueCopies(directory: logDirectory)
+        todayGeneration += 1
+        let generation = todayGeneration
+        let directory = logDirectory
+        DispatchQueue.global(qos: .userInitiated).async {
+            let items = LogHistoryQuery.todayUniqueCopies(directory: directory)
+            DispatchQueue.main.async {
+                guard generation == todayGeneration else { return }
+                todayItems = items
+            }
+        }
     }
 
     private func scheduleSearch(_ query: String) {
         searchGeneration += 1
         let generation = searchGeneration
         let directory = logDirectory
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            searchItems = []
+            return
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             guard generation == searchGeneration else { return }
-            searchItems = LogHistoryQuery.search(directory: directory, query: query)
+            DispatchQueue.global(qos: .userInitiated).async {
+                let items = LogHistoryQuery.search(directory: directory, query: query)
+                DispatchQueue.main.async {
+                    guard generation == searchGeneration else { return }
+                    searchItems = items
+                }
+            }
         }
     }
 
