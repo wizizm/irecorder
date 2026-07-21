@@ -10,6 +10,7 @@
 - Prefer preserving original copy/paste formatting (including newlines) so content can be re-copied from the log without flattening.
 - Settings window should open normally when closed, and if already open but obscured, bring it to the front; if mostly off-screen or stuck at the bottom, recenter/clamp on screen; keep the pane compact (avoid excessive width and scrollbars).
 - Prefer a user-configurable global hotkey (default ⇧⌘L) to open today's log; recording requires ⌘ or ⌃; Escape cancels recording.
+- Paste history (粘贴历史): optional global hotkey (default disabled); picker pastes via clipboard + ⌘V; Accessibility required for paste into other apps; programmatic inject is not re-logged.
 - Menu bar icon should stay crisp at menu-bar size (no white edge, not oversized or blurry).
 
 ## Learned Workspace Facts

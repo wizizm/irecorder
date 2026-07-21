@@ -14,14 +14,15 @@ macOS menu bar utility that logs **committed on-screen text** (including CJK aft
 
 - **Typing** — **Branch A (native apps):** AX value diffs; under Chinese IME, Latin is held and resolved against **full Latin tokens** still in the field (keeps `test`/`zhong`, drops pinyin scraps). Idle does not flush held Latin while Chinese IME is active. **Branch B (Cursor / VS Code–based):** unreliable Monaco textareas ignored; under Chinese IME, key-fallback is off and chat text is captured **after send** (Enter / ⌘Enter). Branch B rules do **not** apply to Finder/Notes/企微.
 - **Copy / paste** — Watches the pasteboard and global ⌘V; a copy followed quickly by the same paste merges into `copy_paste`
+- **Paste history (粘贴历史)** — Menu (or optional global hotkey, **default off**) opens a picker of recent copies/pastes from today’s log and a search tab over older logs; selecting a row pastes via clipboard + ⌘V into the previously focused app (**Accessibility** required for paste into other apps). Programmatic inject is not re-logged.
 - **Line buffering** — Flush after N seconds idle (default 3, configurable). Enter does not start a new log line (IME confirm often uses Enter).
-- **Menu bar** — Pause / resume, open today’s log, settings (directory, retention, truncation, launch at login)
+- **Menu bar** — Pause / resume, open today’s log, paste history, settings (directory, retention, truncation, launch at login)
 - **Privacy-friendly** — Data stays on disk; typing in password / secure fields is not recorded
 
 ## Requirements
 
 - macOS 14+
-- **Accessibility** permission (text capture + global paste hotkey)
+- **Accessibility** permission (text capture, global hotkeys, and paste into other apps via synthesized ⌘V)
 
 ## Install
 
@@ -88,6 +89,7 @@ One file per day: `YYYY-MM-DD.log`
 | Type-line idle | 1–60 seconds |
 | Launch at login | Needs a real `.app` (more reliable under Applications) |
 | Open today’s log hotkey | Global shortcut (default ⇧⌘L); requires Accessibility |
+| Paste history (粘贴历史) hotkey | Global shortcut to open the paste-history picker; **disabled by default** — enable and set in Settings; requires Accessibility |
 
 ## Limitations
 
@@ -120,7 +122,7 @@ Resources/           # AppIcon.icns, MenuBarIcon.png
 
 ## Privacy
 
-iRecorder **does not collect or upload** any data. Logs are written only to the directory you choose. Accessibility is used solely to read committed on-screen text and observe the paste hotkey.
+iRecorder **does not collect or upload** any data. Logs are written only to the directory you choose. Accessibility is used solely to read committed on-screen text, observe global hotkeys, and synthesize ⌘V when pasting from 粘贴历史 into other apps.
 
 ## License
 
