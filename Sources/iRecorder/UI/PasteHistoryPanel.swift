@@ -145,11 +145,15 @@ struct PasteHistoryView: View {
         }
     }
 
-    static func shortTime(_ date: Date) -> String {
+    private static let shortTimeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "zh_CN")
         f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        return f
+    }()
+
+    static func shortTime(_ date: Date) -> String {
+        shortTimeFormatter.string(from: date)
     }
 
     static func preview(_ payload: String, maxChars: Int = 120) -> String {
@@ -172,12 +176,16 @@ final class PasteHistoryPanelController: NSObject, NSWindowDelegate {
     private var onSelect: ((PasteHistoryItem) -> Void)?
     private var onDismiss: (() -> Void)?
     private var isDismissing = false
+    private var escapeMonitor: Any?
 
     func show(
         logDirectory: URL,
         onSelect: @escaping (PasteHistoryItem) -> Void,
         onDismiss: @escaping () -> Void
     ) {
+        // Re-entrant: drop existing panel without firing previous onDismiss
+        hide()
+
         self.onSelect = onSelect
         self.onDismiss = onDismiss
         isDismissing = false
@@ -212,16 +220,37 @@ final class PasteHistoryPanelController: NSObject, NSWindowDelegate {
         panel.setContentSize(size)
         placeUpperCenter(panel)
         panel.orderFrontRegardless()
+        // nonactivatingPanel + orderFrontRegardless does not key the panel,
+        // so SwiftUI onExitCommand never runs — make key and monitor Esc.
+        panel.makeKey()
+        installEscapeMonitor()
         self.panel = panel
     }
 
     func hide() {
+        removeEscapeMonitor()
         isDismissing = true
         panel?.orderOut(nil)
         panel = nil
         onSelect = nil
         onDismiss = nil
         isDismissing = false
+    }
+
+    private func installEscapeMonitor() {
+        removeEscapeMonitor()
+        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.keyCode == 53 else { return event }
+            self?.dismissOnly()
+            return nil
+        }
+    }
+
+    private func removeEscapeMonitor() {
+        if let escapeMonitor {
+            NSEvent.removeMonitor(escapeMonitor)
+            self.escapeMonitor = nil
+        }
     }
 
     private func handleSelect(_ item: PasteHistoryItem) {
@@ -267,6 +296,7 @@ final class PasteHistoryPanelController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         guard !isDismissing else { return }
+        removeEscapeMonitor()
         let dismiss = onDismiss
         panel = nil
         onSelect = nil
