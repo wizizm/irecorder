@@ -22,7 +22,15 @@ struct PasteHistoryView: View {
     @State private var searchItems: [PasteHistoryItem] = []
     @State private var searchGeneration = 0
     @State private var todayGeneration = 0
+    @State private var selectedIndex: Int?
     @FocusState private var searchFieldFocused: Bool
+
+    private var activeItems: [PasteHistoryItem] {
+        switch tab {
+        case .today: return todayItems
+        case .search: return searchItems
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,20 +66,60 @@ struct PasteHistoryView: View {
             }
         }
         .frame(minWidth: 420, minHeight: 360)
+        .background(
+            PasteHistoryKeyMonitor(
+                isSearchFieldFocused: searchFieldFocused,
+                onDown: {
+                    if searchFieldFocused {
+                        searchFieldFocused = false
+                        selectedIndex = ListKeyboardSelection.moveDown(
+                            from: nil,
+                            count: activeItems.count
+                        )
+                    } else {
+                        moveSelection(down: true)
+                    }
+                },
+                onUp: {
+                    if searchFieldFocused { return }
+                    if tab == .search, selectedIndex == 0 || selectedIndex == nil {
+                        searchFieldFocused = true
+                        selectedIndex = nil
+                    } else {
+                        moveSelection(down: false)
+                    }
+                },
+                onReturn: {
+                    if searchFieldFocused { return }
+                    confirmSelection()
+                }
+            )
+        )
         .onAppear { reloadToday() }
         .onChange(of: tab) { _, newTab in
+            selectedIndex = nil
             if newTab == .today {
                 searchFieldFocused = false
                 reloadToday()
             } else {
-                // TextField mounts with the tab; focus next runloop so it exists.
                 DispatchQueue.main.async {
                     searchFieldFocused = true
                 }
             }
         }
         .onChange(of: searchQuery) { _, newValue in
+            selectedIndex = nil
             scheduleSearch(newValue)
+        }
+        .onChange(of: todayItems) { _, items in
+            if tab == .today {
+                selectedIndex = items.isEmpty ? nil : min(selectedIndex ?? 0, items.count - 1)
+            }
+        }
+        .onChange(of: searchItems) { _, items in
+            if tab == .search, !searchFieldFocused {
+                selectedIndex = items.isEmpty ? nil : min(selectedIndex ?? 0, items.count - 1)
+            }
         }
         .onExitCommand { onDismiss() }
     }
@@ -104,11 +152,9 @@ struct PasteHistoryView: View {
     }
 
     private func itemList(_ items: [PasteHistoryItem], showKind: Bool) -> some View {
-        List(items.indices, id: \.self) { index in
-            let item = items[index]
-            Button {
-                onSelect(item)
-            } label: {
+        List(selection: $selectedIndex) {
+            ForEach(items.indices, id: \.self) { index in
+                let item = items[index]
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(Self.shortTime(item.date))
                         .font(.system(.caption, design: .monospaced))
@@ -129,10 +175,23 @@ struct PasteHistoryView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .contentShape(Rectangle())
+                .tag(index)
+                .onTapGesture { onSelect(item) }
             }
-            .buttonStyle(.plain)
         }
         .listStyle(.inset)
+    }
+
+    private func moveSelection(down: Bool) {
+        let count = activeItems.count
+        selectedIndex = down
+            ? ListKeyboardSelection.moveDown(from: selectedIndex, count: count)
+            : ListKeyboardSelection.moveUp(from: selectedIndex, count: count)
+    }
+
+    private func confirmSelection() {
+        guard let selectedIndex, activeItems.indices.contains(selectedIndex) else { return }
+        onSelect(activeItems[selectedIndex])
     }
 
     private func reloadToday() {
@@ -189,6 +248,88 @@ struct PasteHistoryView: View {
 
     static func kindBadge(_ kind: CaptureKind) -> String {
         kind.rawValue
+    }
+}
+
+/// Local keyDown monitor so ↑/↓/↩ work in a nonactivating floating panel.
+private struct PasteHistoryKeyMonitor: NSViewRepresentable {
+    var isSearchFieldFocused: Bool
+    var onDown: () -> Void
+    var onUp: () -> Void
+    var onReturn: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        context.coordinator.attach(
+            isSearchFieldFocused: isSearchFieldFocused,
+            onDown: onDown,
+            onUp: onUp,
+            onReturn: onReturn
+        )
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.isSearchFieldFocused = isSearchFieldFocused
+        context.coordinator.onDown = onDown
+        context.coordinator.onUp = onUp
+        context.coordinator.onReturn = onReturn
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.detach()
+    }
+
+    final class Coordinator {
+        var isSearchFieldFocused = false
+        var onDown: (() -> Void)?
+        var onUp: (() -> Void)?
+        var onReturn: (() -> Void)?
+        private var monitor: Any?
+
+        func attach(
+            isSearchFieldFocused: Bool,
+            onDown: @escaping () -> Void,
+            onUp: @escaping () -> Void,
+            onReturn: @escaping () -> Void
+        ) {
+            self.isSearchFieldFocused = isSearchFieldFocused
+            self.onDown = onDown
+            self.onUp = onUp
+            self.onReturn = onReturn
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self else { return event }
+                switch event.keyCode {
+                case 125: // ↓
+                    DispatchQueue.main.async { self.onDown?() }
+                    return nil
+                case 126: // ↑
+                    if self.isSearchFieldFocused { return event }
+                    DispatchQueue.main.async { self.onUp?() }
+                    return nil
+                case 36: // ↩
+                    if self.isSearchFieldFocused { return event }
+                    DispatchQueue.main.async { self.onReturn?() }
+                    return nil
+                default:
+                    return event
+                }
+            }
+        }
+
+        func detach() {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+                self.monitor = nil
+            }
+        }
+
+        deinit { detach() }
     }
 }
 
