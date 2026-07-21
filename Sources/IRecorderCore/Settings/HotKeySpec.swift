@@ -60,6 +60,15 @@ public struct HotKeySpec: Equatable, Codable, Sendable {
             && self.control == control
     }
 
+    /// Same keyCode + modifiers (ignores `isEnabled`). Used to avoid dual Carbon registration.
+    public func sharesChord(with other: HotKeySpec) -> Bool {
+        keyCode == other.keyCode
+            && command == other.command
+            && shift == other.shift
+            && option == other.option
+            && control == other.control
+    }
+
     /// Carbon `RegisterEventHotKey` modifier mask (cmd/shift/option/control).
     public var carbonModifiers: UInt32 {
         var mask: UInt32 = 0

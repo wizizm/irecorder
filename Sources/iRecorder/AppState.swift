@@ -42,7 +42,13 @@ final class AppState: ObservableObject {
         self.clipboardTruncateMaxKB = settings.clipboardTruncateMaxBytes / 1000
         self.typeLineIdleSeconds = settings.typeLineIdleSeconds
         self.openTodayLogHotKey = settings.openTodayLogHotKey
-        self.pasteHistoryHotKey = settings.pasteHistoryHotKey
+        var pasteHotKey = settings.pasteHistoryHotKey
+        // Persisted both-enabled same chord would silently fail Carbon registration.
+        if pasteHotKey.isEnabled, pasteHotKey.sharesChord(with: settings.openTodayLogHotKey) {
+            pasteHotKey.isEnabled = false
+            settings.pasteHistoryHotKey = pasteHotKey
+        }
+        self.pasteHistoryHotKey = pasteHotKey
         self.hotKeyMonitor = HotKeyMonitor()
         self.pasteInjector = PasteInjector(coordinator: coordinator)
         self.hotKeyMonitor.setBinding(
@@ -53,7 +59,7 @@ final class AppState: ObservableObject {
         }
         self.hotKeyMonitor.setBinding(
             id: HotKeyBindingID.pasteHistory,
-            spec: settings.pasteHistoryHotKey
+            spec: pasteHotKey
         ) { [weak self] in
             self?.showPasteHistory()
         }
@@ -239,6 +245,11 @@ final class AppState: ObservableObject {
     }
 
     func updateOpenTodayLogHotKey(_ hotKey: HotKeySpec) {
+        var hotKey = hotKey
+        // Never register the same Carbon chord as an enabled paste-history binding.
+        if hotKey.isEnabled, hotKey.sharesChord(with: pasteHistoryHotKey), pasteHistoryHotKey.isEnabled {
+            hotKey.isEnabled = false
+        }
         openTodayLogHotKey = hotKey
         settings.openTodayLogHotKey = hotKey
         hotKeyMonitor.setBinding(
@@ -251,6 +262,11 @@ final class AppState: ObservableObject {
     }
 
     func updatePasteHistoryHotKey(_ hotKey: HotKeySpec) {
+        var hotKey = hotKey
+        // Never register the same Carbon chord as open-today (even if that binding is disabled).
+        if hotKey.isEnabled, hotKey.sharesChord(with: openTodayLogHotKey) {
+            hotKey.isEnabled = false
+        }
         pasteHistoryHotKey = hotKey
         settings.pasteHistoryHotKey = hotKey
         hotKeyMonitor.setBinding(

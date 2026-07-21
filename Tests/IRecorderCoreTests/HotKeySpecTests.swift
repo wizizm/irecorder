@@ -13,6 +13,26 @@ import Testing
     #expect(HotKeySpec.defaultPasteHistory.isEnabled == false)
 }
 
+@Test func defaultPasteHistorySharesChordWithOpenToday() {
+    #expect(HotKeySpec.defaultPasteHistory.sharesChord(with: .defaultOpenTodayLog))
+}
+
+@Test func sharesChordIgnoresEnabledFlag() {
+    let a = HotKeySpec(keyCode: 9, command: true, shift: false, option: false, control: false, isEnabled: true)
+    let b = HotKeySpec(keyCode: 9, command: true, shift: false, option: false, control: false, isEnabled: false)
+    #expect(a.sharesChord(with: b))
+}
+
+@Test func sharesChordRequiresSameKeyAndModifiers() {
+    let base = HotKeySpec(keyCode: 37, command: true, shift: true, option: false, control: false, isEnabled: true)
+    #expect(!base.sharesChord(with: HotKeySpec(
+        keyCode: 37, command: true, shift: false, option: false, control: false, isEnabled: true
+    )))
+    #expect(!base.sharesChord(with: HotKeySpec(
+        keyCode: 9, command: true, shift: true, option: false, control: false, isEnabled: true
+    )))
+}
+
 @Test func hotKeyMatchesExactModifiersAndKey() {
     let key = HotKeySpec(keyCode: 37, command: true, shift: true, option: false, control: false, isEnabled: true)
     #expect(key.matches(keyCode: 37, command: true, shift: true, option: false, control: false))

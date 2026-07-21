@@ -70,9 +70,20 @@ struct SettingsView: View {
                     Toggle("", isOn: Binding(
                         get: { appState.openTodayLogHotKey.isEnabled },
                         set: { enabled in
-                            var key = appState.openTodayLogHotKey
-                            key.isEnabled = enabled
-                            appState.updateOpenTodayLogHotKey(key)
+                            if enabled {
+                                if appState.openTodayLogHotKey.sharesChord(with: appState.pasteHistoryHotKey),
+                                   appState.pasteHistoryHotKey.isEnabled {
+                                    beginOpenTodayLogHotKeyCapture()
+                                    return
+                                }
+                                var key = appState.openTodayLogHotKey
+                                key.isEnabled = true
+                                appState.updateOpenTodayLogHotKey(key)
+                            } else {
+                                var key = appState.openTodayLogHotKey
+                                key.isEnabled = false
+                                appState.updateOpenTodayLogHotKey(key)
+                            }
                         }
                     ))
                     .labelsHidden()
@@ -105,9 +116,20 @@ struct SettingsView: View {
                     Toggle("", isOn: Binding(
                         get: { appState.pasteHistoryHotKey.isEnabled },
                         set: { enabled in
-                            var key = appState.pasteHistoryHotKey
-                            key.isEnabled = enabled
-                            appState.updatePasteHistoryHotKey(key)
+                            if enabled {
+                                // Default placeholder shares ⌘⇧L with open-today — force a unique chord first.
+                                if appState.pasteHistoryHotKey.sharesChord(with: appState.openTodayLogHotKey) {
+                                    beginPasteHistoryHotKeyCapture()
+                                    return
+                                }
+                                var key = appState.pasteHistoryHotKey
+                                key.isEnabled = true
+                                appState.updatePasteHistoryHotKey(key)
+                            } else {
+                                var key = appState.pasteHistoryHotKey
+                                key.isEnabled = false
+                                appState.updatePasteHistoryHotKey(key)
+                            }
                         }
                     ))
                     .labelsHidden()
@@ -127,7 +149,7 @@ struct SettingsView: View {
                         appState.updatePasteHistoryHotKey(.defaultPasteHistory)
                     }
                 }
-                Text("全局快捷键打开粘贴历史（默认关闭，需自行设置）")
+                Text("全局快捷键打开粘贴历史（默认关闭；启用时若与打开今日日志冲突会先录制新快捷键）")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -174,11 +196,19 @@ struct SettingsView: View {
         .background(
             ZStack {
                 HotKeyCaptureView(isActive: $isRecordingHotKey) { spec in
+                    if spec.sharesChord(with: appState.pasteHistoryHotKey), appState.pasteHistoryHotKey.isEnabled {
+                        DispatchQueue.main.async { isRecordingHotKey = true }
+                        return
+                    }
                     appState.updateOpenTodayLogHotKey(spec)
                     isRecordingHotKey = false
                     syncHotKeySuspend()
                 }
                 HotKeyCaptureView(isActive: $isRecordingPasteHistoryHotKey) { spec in
+                    if spec.sharesChord(with: appState.openTodayLogHotKey) {
+                        DispatchQueue.main.async { isRecordingPasteHistoryHotKey = true }
+                        return
+                    }
                     appState.updatePasteHistoryHotKey(spec)
                     isRecordingPasteHistoryHotKey = false
                     syncHotKeySuspend()
