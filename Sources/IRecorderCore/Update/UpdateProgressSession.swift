@@ -4,6 +4,8 @@ import Foundation
 public protocol UpdateProgressPresenting: AnyObject {
     var onCancel: (() -> Void)? { get set }
     func show(message: String)
+    /// `fraction` nil → indeterminate spinner; 0...1 → determinate bar.
+    func setProgress(fraction: Double?)
     func dismiss()
 }
 
@@ -12,6 +14,7 @@ public protocol UpdateProgressPresenting: AnyObject {
 public final class UpdateProgressSession {
     private let presenter: UpdateProgressPresenting
     private var isShowing = false
+    private var lastPrefix = ""
 
     public var onCancel: (() -> Void)? {
         didSet { presenter.onCancel = onCancel }
@@ -22,8 +25,26 @@ public final class UpdateProgressSession {
     }
 
     public func show(_ message: String) {
+        lastPrefix = message
         presenter.onCancel = onCancel
         presenter.show(message: message)
+        presenter.setProgress(fraction: nil)
+        isShowing = true
+    }
+
+    public func updateDownloadProgress(
+        written: Int64,
+        total: Int64?,
+        language: DownloadProgressFormat.Language
+    ) {
+        let text = DownloadProgressFormat.message(
+            prefix: lastPrefix.isEmpty ? "" : lastPrefix,
+            written: written,
+            total: total,
+            language: language
+        )
+        presenter.show(message: text.trimmingCharacters(in: .whitespaces))
+        presenter.setProgress(fraction: DownloadProgressFormat.fraction(written: written, total: total))
         isShowing = true
     }
 

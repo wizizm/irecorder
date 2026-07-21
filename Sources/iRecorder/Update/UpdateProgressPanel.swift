@@ -1,13 +1,14 @@
 import AppKit
 import IRecorderCore
 
-/// Floating indeterminate progress panel for LSUIElement menu-bar apps (modeless so network can proceed).
+/// Floating progress panel for LSUIElement menu-bar apps (modeless so network can proceed).
 final class UpdateProgressPanel: NSObject, UpdateProgressPresenting, NSWindowDelegate {
     var onCancel: (() -> Void)?
 
     private var panel: NSPanel?
     private var label: NSTextField?
     private var spinner: NSProgressIndicator?
+    private var bar: NSProgressIndicator?
     private var cancelButton: NSButton?
 
     @MainActor
@@ -20,7 +21,7 @@ final class UpdateProgressPanel: NSObject, UpdateProgressPresenting, NSWindowDel
         }
 
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 340, height: 120),
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 132),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -36,17 +37,25 @@ final class UpdateProgressPanel: NSObject, UpdateProgressPresenting, NSWindowDel
         panel.standardWindowButton(.zoomButton)?.isHidden = true
         panel.delegate = self
 
-        let spinner = NSProgressIndicator(frame: NSRect(x: 20, y: 68, width: 24, height: 24))
+        let spinner = NSProgressIndicator(frame: NSRect(x: 20, y: 84, width: 20, height: 20))
         spinner.style = .spinning
-        spinner.controlSize = .regular
+        spinner.controlSize = .small
         spinner.isIndeterminate = true
         spinner.startAnimation(nil)
 
         let label = NSTextField(labelWithString: message)
-        label.frame = NSRect(x: 56, y: 62, width: 260, height: 32)
+        label.frame = NSRect(x: 48, y: 78, width: 312, height: 28)
         label.font = .systemFont(ofSize: 13)
         label.lineBreakMode = .byTruncatingTail
         label.maximumNumberOfLines = 2
+
+        let bar = NSProgressIndicator(frame: NSRect(x: 20, y: 52, width: 340, height: 12))
+        bar.style = .bar
+        bar.isIndeterminate = false
+        bar.minValue = 0
+        bar.maxValue = 1
+        bar.doubleValue = 0
+        bar.isHidden = true
 
         let cancel = NSButton(
             title: MenuL10n.text(.cancel),
@@ -54,12 +63,13 @@ final class UpdateProgressPanel: NSObject, UpdateProgressPresenting, NSWindowDel
             action: #selector(cancelClicked)
         )
         cancel.bezelStyle = .rounded
-        cancel.frame = NSRect(x: 220, y: 16, width: 100, height: 28)
+        cancel.frame = NSRect(x: 260, y: 14, width: 100, height: 28)
         cancel.keyEquivalent = "\u{1b}" // Esc
 
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 340, height: 120))
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 132))
         content.addSubview(spinner)
         content.addSubview(label)
+        content.addSubview(bar)
         content.addSubview(cancel)
         panel.contentView = content
         panel.center()
@@ -71,7 +81,25 @@ final class UpdateProgressPanel: NSObject, UpdateProgressPresenting, NSWindowDel
         self.panel = panel
         self.label = label
         self.spinner = spinner
+        self.bar = bar
         self.cancelButton = cancel
+    }
+
+    @MainActor
+    func setProgress(fraction: Double?) {
+        guard let bar, let spinner else { return }
+        if let fraction {
+            spinner.stopAnimation(nil)
+            spinner.isHidden = true
+            bar.isHidden = false
+            bar.isIndeterminate = false
+            bar.doubleValue = fraction
+        } else {
+            bar.isHidden = true
+            spinner.isHidden = false
+            spinner.isIndeterminate = true
+            spinner.startAnimation(nil)
+        }
     }
 
     @MainActor
@@ -82,6 +110,7 @@ final class UpdateProgressPanel: NSObject, UpdateProgressPresenting, NSWindowDel
         panel = nil
         label = nil
         spinner = nil
+        bar = nil
         cancelButton = nil
     }
 

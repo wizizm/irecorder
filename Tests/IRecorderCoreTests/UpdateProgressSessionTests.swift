@@ -5,12 +5,17 @@ import IRecorderCore
 @MainActor
 final class RecordingProgressPresenter: UpdateProgressPresenting {
     private(set) var shown: [String] = []
+    private(set) var fractions: [Double?] = []
     private(set) var dismissCount = 0
     var onCancel: (() -> Void)?
     private(set) var cancelInvocations = 0
 
     func show(message: String) {
         shown.append(message)
+    }
+
+    func setProgress(fraction: Double?) {
+        fractions.append(fraction)
     }
 
     func dismiss() {
@@ -80,6 +85,16 @@ struct UpdateProgressSessionTests {
 
         presenter.simulateCancel()
         #expect(cancelled)
+    }
+
+    @Test func updateDownloadProgressUpdatesLabelAndBar() {
+        let presenter = RecordingProgressPresenter()
+        let session = UpdateProgressSession(presenter: presenter)
+        session.show("正在下载更新…")
+        session.updateDownloadProgress(written: 1_048_576, total: 2_097_152, language: .chinese)
+
+        #expect(presenter.shown.last?.contains("50%") == true)
+        #expect(presenter.fractions.last == 0.5)
     }
 }
 

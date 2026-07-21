@@ -2,12 +2,23 @@ import Foundation
 import IRecorderCore
 
 protocol AppInstalling {
-    func install(from downloadURL: URL, replacing destinationApp: URL) async throws
+    func install(
+        from downloadURL: URL,
+        replacing destinationApp: URL,
+        onProgress: DownloadProgressHandler?
+    ) async throws
 }
 
 protocol ZipDownloading {
-    func download(from remote: URL, to local: URL) async throws
+    func download(
+        from remote: URL,
+        to local: URL,
+        onProgress: DownloadProgressHandler?
+    ) async throws
 }
+
+typealias DownloadProgressHandler = @Sendable (_ written: Int64, _ total: Int64?) -> Void
+
 
 enum UpdateHTTP {
     /// Honours system PAC/proxy (fallback when direct fails).
@@ -60,23 +71,36 @@ struct URLSessionReleaseFetcher: ReleaseFetching {
 }
 
 struct URLSessionZipDownloader: ZipDownloading {
-    var primarySession: URLSession = UpdateHTTP.directSession
-    var fallbackSession: URLSession = UpdateHTTP.systemSession
+    var primaryConfiguration: URLSessionConfiguration = UpdateHTTP.directSession.configuration
+    var fallbackConfiguration: URLSessionConfiguration = UpdateHTTP.systemSession.configuration
 
-    func download(from remote: URL, to local: URL) async throws {
+    func download(
+        from remote: URL,
+        to local: URL,
+        onProgress: DownloadProgressHandler?
+    ) async throws {
         do {
-            try await download(from: remote, to: local, using: primarySession)
+            try await download(from: remote, to: local, configuration: primaryConfiguration, onProgress: onProgress)
         } catch {
             try Task.checkCancellation()
             guard UpdateNetworkRetry.shouldRetryWithoutProxy(error) else { throw error }
-            try await download(from: remote, to: local, using: fallbackSession)
+            try await download(from: remote, to: local, configuration: fallbackConfiguration, onProgress: onProgress)
         }
     }
 
-    private func download(from remote: URL, to local: URL, using session: URLSession) async throws {
+    private func download(
+        from remote: URL,
+        to local: URL,
+        configuration: URLSessionConfiguration,
+        onProgress: DownloadProgressHandler?
+    ) async throws {
         var request = URLRequest(url: remote)
         request.timeoutInterval = 180
-        let (tempURL, response) = try await session.download(for: request)
+        let (tempURL, response) = try await ProgressDownloadRunner.download(
+            request: request,
+            configuration: configuration,
+            onProgress: onProgress
+        )
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw UpdateCheckerError.downloadFailed
         }
@@ -87,18 +111,105 @@ struct URLSessionZipDownloader: ZipDownloading {
     }
 }
 
+/// URLSession download with byte progress; one session+delegate per transfer.
+private final class ProgressDownloadRunner: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    private let onProgress: DownloadProgressHandler?
+    private var continuation: CheckedContinuation<(URL, URLResponse), Error>?
+    private var finishedFile: URL?
+    private var response: URLResponse?
+    private weak var task: URLSessionTask?
+
+    private init(onProgress: DownloadProgressHandler?) {
+        self.onProgress = onProgress
+    }
+
+    static func download(
+        request: URLRequest,
+        configuration: URLSessionConfiguration,
+        onProgress: DownloadProgressHandler?
+    ) async throws -> (URL, URLResponse) {
+        let runner = ProgressDownloadRunner(onProgress: onProgress)
+        let config = configuration.copy() as! URLSessionConfiguration
+        let session = URLSession(configuration: config, delegate: runner, delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<(URL, URLResponse), Error>) in
+                runner.continuation = cont
+                let downloadTask = session.downloadTask(with: request)
+                runner.task = downloadTask
+                downloadTask.resume()
+            }
+        } onCancel: {
+            runner.task?.cancel()
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64
+    ) {
+        let total: Int64? = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : nil
+        onProgress?(totalBytesWritten, total)
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didFinishDownloadingTo location: URL
+    ) {
+        let dest = FileManager.default.temporaryDirectory
+            .appendingPathComponent("irecorder-dl-\(UUID().uuidString).zip")
+        do {
+            if FileManager.default.fileExists(atPath: dest.path) {
+                try FileManager.default.removeItem(at: dest)
+            }
+            try FileManager.default.copyItem(at: location, to: dest)
+            finishedFile = dest
+            response = downloadTask.response
+        } catch {
+            settle(.failure(error))
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error {
+            settle(.failure(error))
+            return
+        }
+        guard let finishedFile, let response else {
+            settle(.failure(UpdateCheckerError.downloadFailed))
+            return
+        }
+        settle(.success((finishedFile, response)))
+    }
+
+    private func settle(_ result: Result<(URL, URLResponse), Error>) {
+        guard let continuation else { return }
+        self.continuation = nil
+        continuation.resume(with: result)
+    }
+}
+
 struct AppBundleInstaller: AppInstalling {
     var fileManager: FileManager = .default
     var downloader: any ZipDownloading = URLSessionZipDownloader()
 
-    func install(from downloadURL: URL, replacing destinationApp: URL) async throws {
+    func install(
+        from downloadURL: URL,
+        replacing destinationApp: URL,
+        onProgress: DownloadProgressHandler?
+    ) async throws {
         let work = fileManager.temporaryDirectory
             .appendingPathComponent("iRecorder-update-\(UUID().uuidString)", isDirectory: true)
         try fileManager.createDirectory(at: work, withIntermediateDirectories: true)
         defer { try? fileManager.removeItem(at: work) }
 
         let zipPath = work.appendingPathComponent("download.zip")
-        try await downloader.download(from: downloadURL, to: zipPath)
+        try await downloader.download(from: downloadURL, to: zipPath, onProgress: onProgress)
 
         let extractDir = work.appendingPathComponent("extract", isDirectory: true)
         try fileManager.createDirectory(at: extractDir, withIntermediateDirectories: true)

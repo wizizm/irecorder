@@ -56,8 +56,22 @@ enum UpdateMenuActions {
                     guard alert.runModal() == .alertFirstButtonReturn else { return }
                     try Task.checkCancellation()
                     progress.show(MenuL10n.text(.downloadingUpdate))
-                    try await installer.install(from: downloadURL, replacing: destinationApp)
-                    // ponytail: install may finish after cancel (detached unzip); always relaunch if replace succeeded
+                    let progressLanguage: DownloadProgressFormat.Language =
+                        MenuL10n.language == .chinese ? .chinese : .english
+                    try await installer.install(
+                        from: downloadURL,
+                        replacing: destinationApp,
+                        onProgress: { written, total in
+                            Task { @MainActor in
+                                progress.updateDownloadProgress(
+                                    written: written,
+                                    total: total,
+                                    language: progressLanguage
+                                )
+                            }
+                        }
+                    )
+                    try Task.checkCancellation()
                     progress.dismissIfNeeded()
                     NSWorkspace.shared.open(destinationApp)
                     NSApplication.shared.terminate(nil)
@@ -67,7 +81,7 @@ enum UpdateMenuActions {
                 guard UpdateCheckErrorPolicy.shouldPresentFailure(for: error) else { return }
                 presentAlert(
                     title: MenuL10n.text(.updateFailedTitle),
-                    message: error.localizedDescription
+                    message: MenuL10n.failureMessage(for: error)
                 )
             }
         }
