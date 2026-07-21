@@ -16,7 +16,7 @@ macOS menu bar utility that logs **committed on-screen text** (including CJK aft
 - **Copy / paste** — Watches the pasteboard and global ⌘V; a copy followed quickly by the same paste merges into `copy_paste`
 - **Paste history (粘贴历史)** — Menu (or optional global hotkey, **default off**) opens a picker of recent copies/pastes from today’s log and a search tab over older logs; selecting a row pastes via clipboard + ⌘V into the previously focused app (**Accessibility** required for paste into other apps). Programmatic inject is not re-logged.
 - **Line buffering** — Flush after N seconds idle (default 3, configurable). Enter does not start a new log line (IME confirm often uses Enter).
-- **Menu bar** — Pause / resume, open today’s log, paste history, settings (directory, retention, truncation, launch at login)
+- **Menu bar** — Pause / resume, open today’s log, paste history, settings (directory, retention, truncation, launch at login), **Check for Updates…** (GitHub release zip), **Help** (Issues)
 - **Privacy-friendly** — Data stays on disk; typing in password / secure fields is not recorded
 
 ## Requirements
@@ -37,7 +37,7 @@ cd irecorder
 The script will:
 
 1. `swift build -c release`
-2. Produce `dist/iRecorder.app`
+2. Produce `dist/iRecorder.app` and `dist/iRecorder.app.zip` (upload the zip as a GitHub Release asset for **Check for Updates**)
 3. Install to `/Applications/iRecorder.app` and open it
 
 Package only (skip `/Applications`):

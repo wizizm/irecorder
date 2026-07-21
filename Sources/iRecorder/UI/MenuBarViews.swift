@@ -23,6 +23,12 @@ struct MenuBarContent: View {
             openSettings()
             appState.bringSettingsWindowForward()
         }
+        Button(MenuL10n.text(.checkForUpdates)) {
+            UpdateMenuActions.checkForUpdates()
+        }
+        Button(MenuL10n.text(.help)) {
+            UpdateMenuActions.openHelp()
+        }
         Divider()
         Button("退出") {
             NSApplication.shared.terminate(nil)

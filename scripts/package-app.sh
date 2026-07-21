@@ -19,6 +19,12 @@ codesign --force --deep --sign - "$APP" >/dev/null
 
 echo "Built $APP"
 
+# Zip for GitHub Releases / in-app update (Check for Updates expects a .zip asset).
+DIST_ZIP="$ROOT/dist/iRecorder.app.zip"
+rm -f "$DIST_ZIP"
+ditto -c -k --sequesterRsrc --keepParent "$APP" "$DIST_ZIP"
+echo "Zipped $DIST_ZIP"
+
 INSTALL_APP="/Applications/iRecorder.app"
 if [[ "${IRECORDER_SKIP_INSTALL:-}" == "1" ]]; then
   echo "Skipped install (IRECORDER_SKIP_INSTALL=1)."

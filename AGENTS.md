@@ -22,5 +22,6 @@
 - Build/package entrypoint is `./scripts/package-app.sh` (SwiftPM release build → `dist/iRecorder.app`, optional install to `/Applications`).
 - Global hotkeys use Carbon `RegisterEventHotKey` via multi-ID `HotKeyMonitor` (open-today-log + 粘贴历史); still depend on Accessibility for reliable ⌘V injection.
 - 「粘贴历史」 is log-backed (no separate clipboard DB): Today = `copy`/`copy_paste` newest-first payload dedupe; Search = case-insensitive substring across daily `.log` kinds; programmatic pasteboard+⌘V must be suppressed from capture.
+- Menu bar includes Check for Updates (GitHub `releases/latest` vs `CFBundleShortVersionString`, installs `iRecorder.app.zip` over the running bundle) and Help (opens repo Issues). `scripts/package-app.sh` also emits `dist/iRecorder.app.zip` for release assets.
 - Windows counterpart is published separately at `https://github.com/wizizm/irecorder-for-windows` and is linked from the READMEs.
 - Self-capture of the app’s own Console/log output previously caused exponential backslash escaping on copy/paste lines; filtering self-capture is part of the capture design.
