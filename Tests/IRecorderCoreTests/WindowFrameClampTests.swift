@@ -26,3 +26,31 @@ import Testing
     let fixed = WindowFrameClamp.ensureVisible(frame: frame, screenVisible: screen)
     #expect(fixed == frame)
 }
+
+@Test func nearAnchorPlacesBelowRightOfCursor() {
+    let screen = CGRect(x: 0, y: 0, width: 1440, height: 900)
+    let size = CGSize(width: 480, height: 420)
+    let anchor = CGPoint(x: 400, y: 600)
+    let frame = WindowFrameClamp.nearAnchor(anchor: anchor, size: size, screenVisible: screen, gap: 8)
+    #expect(abs(frame.minX - (anchor.x + 8)) < 0.5)
+    #expect(abs(frame.maxY - (anchor.y - 8)) < 0.5)
+    #expect(frame.size == size)
+}
+
+@Test func nearAnchorFlipsAboveWhenTooLow() {
+    let screen = CGRect(x: 0, y: 0, width: 1440, height: 900)
+    let size = CGSize(width: 480, height: 420)
+    let anchor = CGPoint(x: 400, y: 50)
+    let frame = WindowFrameClamp.nearAnchor(anchor: anchor, size: size, screenVisible: screen, gap: 8)
+    #expect(frame.minY >= screen.minY - 0.5)
+    #expect(abs(frame.minY - (anchor.y + 8)) < 0.5 || frame.minY > anchor.y)
+}
+
+@Test func nearAnchorFlipsLeftWhenTooFarRight() {
+    let screen = CGRect(x: 0, y: 0, width: 1440, height: 900)
+    let size = CGSize(width: 480, height: 420)
+    let anchor = CGPoint(x: 1400, y: 500)
+    let frame = WindowFrameClamp.nearAnchor(anchor: anchor, size: size, screenVisible: screen, gap: 8)
+    #expect(frame.maxX <= screen.maxX + 0.5)
+    #expect(frame.minX < anchor.x)
+}

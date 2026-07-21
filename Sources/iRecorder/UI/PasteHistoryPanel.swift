@@ -239,7 +239,7 @@ final class PasteHistoryPanelController: NSObject, NSWindowDelegate {
         panel.contentViewController = hosting
         panel.delegate = self
         panel.setContentSize(size)
-        placeUpperCenter(panel)
+        placeNearMouse(panel)
         panel.orderFrontRegardless()
         // nonactivatingPanel + orderFrontRegardless does not key the panel,
         // so SwiftUI onExitCommand never runs — make key and monitor Esc.
@@ -286,7 +286,7 @@ final class PasteHistoryPanelController: NSObject, NSWindowDelegate {
         dismiss?()
     }
 
-    private func placeUpperCenter(_ panel: NSPanel) {
+    private func placeNearMouse(_ panel: NSPanel) {
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
             ?? NSScreen.main
@@ -295,16 +295,11 @@ final class PasteHistoryPanelController: NSObject, NSWindowDelegate {
             panel.center()
             return
         }
-        let visible = screen.visibleFrame
-        let size = panel.frame.size
-        let topMargin: CGFloat = 72
-        var frame = NSRect(
-            x: visible.midX - size.width / 2,
-            y: visible.maxY - size.height - topMargin,
-            width: size.width,
-            height: size.height
+        let frame = WindowFrameClamp.nearAnchor(
+            anchor: mouse,
+            size: panel.frame.size,
+            screenVisible: screen.visibleFrame
         )
-        frame = WindowFrameClamp.ensureVisible(frame: frame, screenVisible: visible)
         panel.setFrame(frame, display: true)
     }
 

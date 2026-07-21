@@ -38,4 +38,27 @@ public enum WindowFrameClamp {
         }
         return result
     }
+
+    /// Place a panel near `anchor` (e.g. mouse / caret). Prefers below-right; flips above/left if needed; then clamps on-screen.
+    public static func nearAnchor(
+        anchor: CGPoint,
+        size: CGSize,
+        screenVisible: CGRect,
+        gap: CGFloat = 8
+    ) -> CGRect {
+        guard !screenVisible.isNull, !screenVisible.isEmpty, size.width > 0, size.height > 0 else {
+            return CGRect(origin: anchor, size: size)
+        }
+
+        var origin = CGPoint(x: anchor.x + gap, y: anchor.y - size.height - gap)
+        if origin.y < screenVisible.minY {
+            origin.y = anchor.y + gap
+        }
+        if origin.x + size.width > screenVisible.maxX {
+            origin.x = anchor.x - size.width - gap
+        }
+
+        let frame = CGRect(origin: origin, size: size)
+        return ensureVisible(frame: frame, screenVisible: screenVisible)
+    }
 }
