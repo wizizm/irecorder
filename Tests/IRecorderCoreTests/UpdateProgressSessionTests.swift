@@ -6,6 +6,7 @@ import IRecorderCore
 final class RecordingProgressPresenter: UpdateProgressPresenting {
     private(set) var shown: [String] = []
     private(set) var fractions: [Double?] = []
+    private(set) var barWhenNilFlags: [Bool] = []
     private(set) var dismissCount = 0
     var onCancel: (() -> Void)?
     private(set) var cancelInvocations = 0
@@ -14,8 +15,9 @@ final class RecordingProgressPresenter: UpdateProgressPresenting {
         shown.append(message)
     }
 
-    func setProgress(fraction: Double?) {
+    func setProgress(fraction: Double?, barWhenNil: Bool) {
         fractions.append(fraction)
+        barWhenNilFlags.append(barWhenNil)
     }
 
     func dismiss() {
@@ -95,6 +97,17 @@ struct UpdateProgressSessionTests {
 
         #expect(presenter.shown.last?.contains("50%") == true)
         #expect(presenter.fractions.last == 0.5)
+        #expect(presenter.barWhenNilFlags.last == true)
+    }
+
+    @Test func updateDownloadProgressShowsBarEvenWithoutTotal() {
+        let presenter = RecordingProgressPresenter()
+        let session = UpdateProgressSession(presenter: presenter)
+        session.show("Downloading Update…")
+        session.updateDownloadProgress(written: 1024, total: nil, language: .english)
+
+        #expect(presenter.fractions.last! == nil)
+        #expect(presenter.barWhenNilFlags.last == true)
     }
 }
 

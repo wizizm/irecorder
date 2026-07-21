@@ -4,9 +4,15 @@ import Foundation
 public protocol UpdateProgressPresenting: AnyObject {
     var onCancel: (() -> Void)? { get set }
     func show(message: String)
-    /// `fraction` nil → indeterminate spinner; 0...1 → determinate bar.
-    func setProgress(fraction: Double?)
+    /// `nil` + `barWhenNil: false` → spinner; `nil` + `barWhenNil: true` → indeterminate bar; else determinate bar.
+    func setProgress(fraction: Double?, barWhenNil: Bool)
     func dismiss()
+}
+
+extension UpdateProgressPresenting {
+    public func setProgress(fraction: Double?) {
+        setProgress(fraction: fraction, barWhenNil: false)
+    }
 }
 
 /// Tracks whether a progress UI is visible so dismiss is safe/idempotent.
@@ -28,7 +34,7 @@ public final class UpdateProgressSession {
         lastPrefix = message
         presenter.onCancel = onCancel
         presenter.show(message: message)
-        presenter.setProgress(fraction: nil)
+        presenter.setProgress(fraction: nil, barWhenNil: false)
         isShowing = true
     }
 
@@ -44,7 +50,11 @@ public final class UpdateProgressSession {
             language: language
         )
         presenter.show(message: text.trimmingCharacters(in: .whitespaces))
-        presenter.setProgress(fraction: DownloadProgressFormat.fraction(written: written, total: total))
+        // Always show a bar while downloading — indeterminate if Content-Length missing.
+        presenter.setProgress(
+            fraction: DownloadProgressFormat.fraction(written: written, total: total),
+            barWhenNil: true
+        )
         isShowing = true
     }
 

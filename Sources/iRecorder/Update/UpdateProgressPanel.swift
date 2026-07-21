@@ -86,15 +86,23 @@ final class UpdateProgressPanel: NSObject, UpdateProgressPresenting, NSWindowDel
     }
 
     @MainActor
-    func setProgress(fraction: Double?) {
+    func setProgress(fraction: Double?, barWhenNil: Bool) {
         guard let bar, let spinner else { return }
         if let fraction {
             spinner.stopAnimation(nil)
             spinner.isHidden = true
+            bar.stopAnimation(nil)
             bar.isHidden = false
             bar.isIndeterminate = false
             bar.doubleValue = fraction
+        } else if barWhenNil {
+            spinner.stopAnimation(nil)
+            spinner.isHidden = true
+            bar.isHidden = false
+            bar.isIndeterminate = true
+            bar.startAnimation(nil)
         } else {
+            bar.stopAnimation(nil)
             bar.isHidden = true
             spinner.isHidden = false
             spinner.isIndeterminate = true
@@ -105,6 +113,7 @@ final class UpdateProgressPanel: NSObject, UpdateProgressPresenting, NSWindowDel
     @MainActor
     func dismiss() {
         spinner?.stopAnimation(nil)
+        bar?.stopAnimation(nil)
         panel?.delegate = nil
         panel?.orderOut(nil)
         panel = nil

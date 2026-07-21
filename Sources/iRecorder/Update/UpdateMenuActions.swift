@@ -71,7 +71,7 @@ enum UpdateMenuActions {
                             }
                         }
                     )
-                    try Task.checkCancellation()
+                    // ponytail: install may finish after cancel (detached unzip); always relaunch if replace succeeded
                     progress.dismissIfNeeded()
                     NSWorkspace.shared.open(destinationApp)
                     NSApplication.shared.terminate(nil)
